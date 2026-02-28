@@ -1,0 +1,27 @@
+{
+    "aws_project_region": "ap-south-1",
+    "aws_cognito_region": "ap-south-1",
+    "aws_user_pools_id": "ap-south-1_4KrftyESC",
+    "aws_user_pools_web_client_id": "722f2bn5n8lkp6hcmvm4s89g9l",
+    "aws_mandatory_sign_in": "enable",
+    "oauth": {
+        "domain": "",
+        "scope": [
+            "email",
+            "openid",
+            "profile"
+        ],
+        "redirectSignIn": "mediora://callback",
+        "redirectSignOut": "mediora://callback",
+        "responseType": "code"
+    },
+    "aws_cloud_logic_custom": [
+        {
+            "name": "MedioraAPI",
+            "endpoint": "https://5nkq4i9v6j.execute-api.ap-south-1.amazonaws.com",
+            "region": "ap-south-1"
+        }
+    ],
+    "aws_user_files_s3_bucket": "mediora-storage",
+    "aws_user_files_s3_bucket_region": "ap-south-1"
+}
