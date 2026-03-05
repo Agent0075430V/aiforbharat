@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Draft, Caption, ContentScript } from '../types/content.types';
 import type { ContentFormat, Platform } from '../types/profile.types';
+import { getDrafts as fetchDraftsFromDB } from '../services/aws/mediora.service';
 
 const DRAFTS_KEY = 'mediora_drafts';
 
@@ -17,6 +18,7 @@ interface DraftsContextValue {
   removeDraft: (id: string) => Promise<void>;
   getDraft: (id: string) => Draft | undefined;
   isLoading: boolean;
+  syncFromServer: (userId: string) => Promise<void>;
 }
 
 const DraftsContext = createContext<DraftsContextValue | null>(null);
@@ -105,6 +107,50 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [drafts]
   );
 
+  /** Pull drafts from DynamoDB and merge with local (server wins on conflict) */
+  const syncFromServer = useCallback(async (userId: string) => {
+    try {
+      const serverRecords = await fetchDraftsFromDB(userId);
+      if (!serverRecords?.length) return;
+      // Convert DraftRecord → Draft shape
+      const serverDrafts: Draft[] = serverRecords.map((r) => ({
+        id: r.draftId,
+        topic: r.caption_en?.slice(0, 40) ?? 'Untitled',
+        caption: {
+          id: r.draftId,
+          type: 'short' as const,
+          text: r.caption_en ?? '',
+          engagementScore: r.engagementScore ?? 0,
+          scoreBreakdown: { hookStrength: 0, toneMatch: 0, ctaStrength: 0, relatability: 0, languageQuality: 0 },
+          improvementTip: '',
+          platform: (r.platform ?? 'instagram') as Platform,
+          language: 'English',
+          generatedAt: r.createdAt ?? new Date().toISOString(),
+        },
+        hashtags: Array.isArray(r.hashtags) ? r.hashtags : [],
+        platform: (r.platform ?? 'instagram') as Platform,
+        format: (r.format ?? 'reel') as ContentFormat,
+        status: r.status ?? 'draft',
+        bestTimeToPost: '',
+        engagementScore: r.engagementScore ?? 0,
+        createdAt: r.createdAt ?? new Date().toISOString(),
+        updatedAt: r.createdAt ?? new Date().toISOString(),
+      }));
+      // Merge: server drafts take precedence; keep local-only drafts
+      setDrafts((prev) => {
+        const serverIds = new Set(serverDrafts.map((d) => d.id));
+        const localOnly = prev.filter((d) => !serverIds.has(d.id));
+        const merged = [...serverDrafts, ...localOnly].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        AsyncStorage.setItem(DRAFTS_KEY, JSON.stringify(merged)).catch(() => { });
+        return merged;
+      });
+    } catch (err) {
+      console.warn('[DraftsContext] syncFromServer failed (non-fatal):', err);
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     AsyncStorage.getItem(DRAFTS_KEY).then((raw) => {
@@ -128,6 +174,7 @@ export const DraftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     removeDraft,
     getDraft,
     isLoading,
+    syncFromServer,
   };
 
   return <DraftsContext.Provider value={value}>{children}</DraftsContext.Provider>;

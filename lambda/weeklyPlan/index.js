@@ -30,7 +30,9 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dyn
 import { randomUUID } from 'crypto';
 
 const REGION = 'ap-south-1';
-const MODEL_ID = 'anthropic.claude-3-5-sonnet-20241022-v2:0';
+// APAC cross-region inference profile — confirmed Active in ap-south-1 (Mumbai)
+// ARN: arn:aws:bedrock:ap-south-1:318276049767:inference-profile/apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+const MODEL_ID = 'apac.anthropic.claude-3-5-sonnet-20241022-v2:0';
 const USERS_TABLE = 'mediora-users';
 const DRAFTS_TABLE = 'mediora-drafts';
 

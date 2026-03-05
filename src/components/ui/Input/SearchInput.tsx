@@ -60,7 +60,7 @@ const TextIconPressable: React.FC<{ onPress: () => void; children: React.ReactNo
   onPress,
   children,
 }) => (
-  <Pressable onPress={onPress} hitSlop={8} activeOpacity={0.75}>
+  <Pressable onPress={onPress} hitSlop={8}>
     {children}
   </Pressable>
 );

@@ -38,7 +38,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     <View
       // eslint-disable-next-line react-native/no-inline-styles
       style={{
-        width,
+        width: width as any,
         height,
         borderRadius,
         overflow: 'hidden',

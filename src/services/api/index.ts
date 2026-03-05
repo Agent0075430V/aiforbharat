@@ -33,23 +33,9 @@ function getUserId(profile: InfluencerProfile): string {
   return (profile as any).userId ?? (profile as any).id ?? 'anonymous';
 }
 
-/** Call /generate with a pre-built prompt string and parse the JSON response */
-async function callGenerate(userId: string, prompt: string): Promise<string> {
-  const result = await generateCaption({ userId, prompt });
-  // Return a JSON string of the full result so parseJSONSafely can decode it
-  return JSON.stringify({
-    caption: result.caption_en,
-    caption_en: result.caption_en,
-    caption_hi: result.caption_hi,
-    caption_ta: result.caption_ta,
-    caption_mr: result.caption_mr,
-    caption_bn: result.caption_bn,
-    hashtags: result.hashtags,
-    script: result.script,
-    cta: result.cta,
-    engagementScore: result.engagementScore,
-    draftId: result.draftId,
-  });
+/** Call /generate with a specific action and return the full parsed result from Lambda */
+async function callGenerate(userId: string, prompt: string, action = 'caption'): Promise<any> {
+  return generateCaption({ userId, prompt, action } as any);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -64,8 +50,9 @@ export const generateCaptions = async (
   language: string,
 ) => {
   const prompt = buildCaptionPrompt(topic, profile, platform, language);
-  const raw = await callGenerate(getUserId(profile), prompt);
-  return parseJSONSafely(raw);
+  const result = await callGenerate(getUserId(profile), prompt, 'caption');
+  if (result && typeof result === 'object') return result;
+  return parseJSONSafely(result as unknown as string);
 };
 
 /** Generates a weekly content plan via Bedrock (7 parallel calls) */
@@ -77,8 +64,6 @@ export const generateWeeklyPlan = async (
   const result = await awsGenerateWeeklyPlan({ userId, weekStartDate, postsPerWeek: 7 });
 
   // Map to CalendarPlanResponse shape expected by the Calendar screen
-  const prompt = buildCalendarPrompt(profile, weekStartDate);
-  // Attempt to build a compatible shape; fall back to a raw Bedrock call if needed
   if (result?.week?.length) {
     return {
       days: result.week.map((day) => ({
@@ -92,7 +77,9 @@ export const generateWeeklyPlan = async (
   }
 
   // Fallback: single Bedrock call with calendar prompt
-  const raw = await callGenerate(userId, prompt);
+  const prompt = buildCalendarPrompt(profile, weekStartDate);
+  const rawResult = await callGenerate(userId, prompt);
+  const raw = typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult);
   return parseJSONSafely<CalendarPlanResponse>(raw);
 };
 
@@ -103,8 +90,9 @@ export const generateHashtags = async (
   platform: Platform,
 ) => {
   const prompt = buildHashtagPrompt(topic, profile, platform);
-  const raw = await callGenerate(getUserId(profile), prompt);
-  return parseJSONSafely(raw);
+  const result = await callGenerate(getUserId(profile), prompt, 'hashtag');
+  if (result && typeof result === 'object') return result;
+  return parseJSONSafely(result as unknown as string);
 };
 
 /** Generates a content script via Bedrock */
@@ -115,42 +103,44 @@ export const generateScript = async (
   platform: Platform,
 ) => {
   const prompt = buildScriptPrompt(topic, profile, format, platform);
-  const raw = await callGenerate(getUserId(profile), prompt);
-  return parseJSONSafely(raw);
+  const result = await callGenerate(getUserId(profile), prompt, 'script');
+  if (result && typeof result === 'object') return result;
+  return parseJSONSafely(result as unknown as string);
 };
 
 /** Analyses quiz answers and returns archetype + profile hints via Bedrock */
 export const analyzeQuizAnswers = async (answers: QuizAnswers) => {
   const prompt = buildQuizAnalysisPrompt(answers);
-  // Quiz analysis doesn't need a real userId — use a placeholder
-  const raw = await callGenerate('quiz-analysis', prompt);
-  return parseJSONSafely(raw);
+  const result = await callGenerate('quiz-analysis', prompt, 'quiz');
+  if (result && typeof result === 'object') return result;
+  return parseJSONSafely(result as unknown as string);
 };
 
 /** Parses a voice transcript into a structured command via Bedrock */
 export const parseVoiceCommand = async (transcript: string) => {
   const prompt = buildVoiceIntentPrompt(transcript);
-  const raw = await callGenerate('voice-parser', prompt);
+  const result = await callGenerate('voice-parser', prompt, 'voice');
+  const raw = typeof result === 'string' ? result : JSON.stringify(result);
   return parseJSONSafely(raw);
 };
 
 /**
  * transcribeAudio
  * Uploads a local audio URI to S3 then transcribes it via Amazon Transcribe.
- * Replaces the old groqTranscribeAudio (Groq Whisper) implementation.
  *
  * @param audioUri  - file:// URI from expo-av
- * @param userId    - Cognito userId (required for S3 path scoping)
+ * @param userId    - Cognito userId (required for S3 path scoping). Pass the
+ *                    value from useAuth().token which stores the Cognito sub.
  */
 export const transcribeAudio = async (audioUri: string, userId = 'anonymous'): Promise<string> => {
-  // 1. Upload audio to S3 via Lambda presigned URL
+  // 1. Get a presigned S3 upload URL from Lambda
   const fileName = `recording_${Date.now()}.m4a`;
   const { data: uploadData } = await post<Record<string, string>, { presignedUrl: string; fileKey: string }>(
     '/upload',
     { userId, fileName, fileType: 'audio/m4a', uploadType: 'voice', operation: 'upload' },
   );
 
-  // 2. PUT the file to S3 directly
+  // 2. PUT the audio file directly to S3 via the presigned URL
   const fileRes = await fetch(audioUri);
   const blob = await fileRes.blob();
   await fetch(uploadData.presignedUrl, {
@@ -159,7 +149,7 @@ export const transcribeAudio = async (audioUri: string, userId = 'anonymous'): P
     body: blob,
   });
 
-  // 3. Transcribe via Lambda
+  // 3. Transcribe via Lambda → Amazon Transcribe
   const result = await transcribeVoiceNote({ userId, s3AudioKey: uploadData.fileKey });
   return result.transcript;
 };

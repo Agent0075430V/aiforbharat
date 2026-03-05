@@ -77,7 +77,9 @@ export async function post<TBody, TResponse>(
     const json = await response.json().catch(() => null);
 
     if (!response.ok) {
-        throw new ApiError(response.status, `API call to ${path} failed`, json);
+        const errMsg = `API call to ${path} failed (HTTP ${response.status})`;
+        console.warn('[API]', errMsg, json);
+        throw new ApiError(response.status, errMsg, json);
     }
 
     return { data: json as TResponse, status: response.status };
@@ -96,7 +98,9 @@ export async function get<TResponse>(path: string): Promise<ApiResponse<TRespons
     const json = await response.json().catch(() => null);
 
     if (!response.ok) {
-        throw new ApiError(response.status, `API call to ${path} failed`, json);
+        const errMsg = `API call to ${path} failed (HTTP ${response.status})`;
+        console.warn('[API]', errMsg, json);
+        throw new ApiError(response.status, errMsg, json);
     }
 
     return { data: json as TResponse, status: response.status };

@@ -58,7 +58,6 @@ export const CaptionActions: React.FC<CaptionActionsProps> = ({
     return (
       <AnimatedPressable
         key={label}
-        activeOpacity={0.75}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}

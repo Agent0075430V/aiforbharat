@@ -17,7 +17,7 @@ export const ContentScreen: React.FC = () => {
 
   const navTo = (screen: keyof ContentStackParamList) => {
     haptics.light();
-    navigation.navigate(screen);
+    navigation.navigate(screen as never);
   };
 
   return (

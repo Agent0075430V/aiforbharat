@@ -6,7 +6,7 @@ import SelectedBar from './SelectedBar';
 import RecentSets from './RecentSets';
 import Button from '../../../components/ui/Button';
 import { useProfile } from '../../../store/ProfileContext';
-import { mockHashtagGroups, mockRecentHashtagSets, mockInfluencerProfile } from '../../../constants/mockData.constants';
+import { mockRecentHashtagSets, mockInfluencerProfile } from '../../../constants/mockData.constants';
 import { generateHashtags } from '../../../services/api';
 import Toast from 'react-native-toast-message';
 import type { HashtagItem } from '../../../types/content.types';
@@ -20,11 +20,18 @@ function normalizeGroups(raw: unknown): HashtagGroups {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const toItems = (arr: unknown, cat: 'trending' | 'niche' | 'branded'): HashtagItem[] => {
     if (!Array.isArray(arr)) return [];
-    return arr.map((x: any) => ({
-      tag: typeof x?.tag === 'string' ? x.tag : '#tag',
-      estimatedPosts: typeof x?.estimatedPosts === 'string' ? x.estimatedPosts : '—',
-      category: cat,
-    }));
+    return arr.map((x: any) => {
+      // Handle plain string "#tag" (new Bedrock action:'hashtag' format)
+      if (typeof x === 'string') {
+        return { tag: x.startsWith('#') ? x : `#${x}`, estimatedPosts: '—', category: cat };
+      }
+      // Handle object {tag, estimatedPosts} (legacy format)
+      return {
+        tag: typeof x?.tag === 'string' ? x.tag : '#tag',
+        estimatedPosts: typeof x?.estimatedPosts === 'string' ? x.estimatedPosts : '—',
+        category: cat,
+      };
+    });
   };
   return {
     trending: toItems(o.trending, 'trending'),
@@ -38,7 +45,7 @@ export const HashtagStudioScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [platform, setPlatform] = useState<Platform>('instagram');
   const [loading, setLoading] = useState(false);
-  const [groups, setGroups] = useState<HashtagGroups>(mockHashtagGroups);
+  const [groups, setGroups] = useState<HashtagGroups>({ trending: [], niche: [], branded: [] });
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
 
   const toggleTag = (tag: string) => {
@@ -62,9 +69,23 @@ export const HashtagStudioScreen: React.FC = () => {
     setLoading(true);
     try {
       const raw = await generateHashtags(topic, profileOrMock, platform);
-      setGroups(normalizeGroups(raw));
+      const normalized = normalizeGroups(raw);
+      const hasResults = normalized.trending.length + normalized.niche.length + normalized.branded.length > 0;
+      if (!hasResults) {
+        Toast.show({
+          type: 'info',
+          text1: 'AI unavailable',
+          text2: 'Enable Bedrock model access in AWS Console to generate hashtags.',
+        });
+        return;
+      }
+      setGroups(normalized);
     } catch {
-      setGroups(mockHashtagGroups);
+      Toast.show({
+        type: 'error',
+        text1: 'AI unavailable',
+        text2: 'Enable Bedrock model access in AWS Console to generate hashtags.',
+      });
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { OnboardingStackParamList } from '../../types/navigation.types';
 import { useQuiz } from '../../store/QuizContext';
 import { useProfile } from '../../store/ProfileContext';
+import { useAuth } from '../../store/AuthContext';
 import { analyzeQuizAnswers } from '../../services/api';
 import { saveUser } from '../../services/aws/mediora.service';
 import type { InfluencerProfile, CreatorArchetype, Niche, Tone, Language } from '../../types/profile.types';
@@ -66,6 +67,7 @@ export const QuizAnalyzing: React.FC = () => {
   const route = useRoute<QuizAnalyzingRoute>();
   const { getQuizAnswers } = useQuiz();
   const { setProfile } = useProfile();
+  const { token: cognitoUserId } = useAuth(); // real Cognito sub stored after login/signup
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -82,16 +84,20 @@ export const QuizAnalyzing: React.FC = () => {
         try {
           const raw = await analyzeQuizAnswers(answers);
           if (cancelled) return;
+          // Use real Cognito userId so DynamoDB stores under the correct account
+          const resolvedUserId = cognitoUserId ?? `quiz-${Date.now()}`;
           const profile = buildProfileFromAnalysis(raw, answers);
+          // Stamp the real userId onto the profile
+          const profileWithId: InfluencerProfile = { ...profile, userId: resolvedUserId };
           // 1. Save locally to AsyncStorage
-          await setProfile(profile);
+          await setProfile(profileWithId);
           // 2. Save to DynamoDB via Lambda
           try {
             await saveUser({
-              userId: profile.userId,
-              niche: profile.niche,
-              tone: profile.tone,
-              language: profile.language,
+              userId: resolvedUserId,
+              niche: profileWithId.niche,
+              tone: profileWithId.tone,
+              language: profileWithId.language,
             });
           } catch (dbErr) {
             console.warn('[Mediora] DynamoDB saveUser failed (non-fatal):', dbErr);

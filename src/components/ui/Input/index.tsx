@@ -26,13 +26,17 @@ export const Input: React.FC<MedioraInputProps> = ({
   rightIcon,
   onFocus,
   onBlur,
+  value,
+  onChangeText,
   ...rest
 }) => {
   const [focused, setFocused] = useState(false);
-  const [value, setValue] = useState(rest.value ?? rest.defaultValue ?? '');
-  const animatedLabel = useRef(new Animated.Value(0)).current;
+  const animatedLabel = useRef(new Animated.Value(
+    // Start label raised if there's already a value
+    value && String(value).length > 0 ? 1 : 0
+  )).current;
 
-  const hasValue = typeof value === 'string' ? value.length > 0 : !!value;
+  const hasValue = value !== undefined && value !== null && String(value).length > 0;
 
   const runLabelAnimation = (toValue: number) => {
     Animated.timing(animatedLabel, {
@@ -57,8 +61,7 @@ export const Input: React.FC<MedioraInputProps> = ({
   };
 
   const handleChangeText = (text: string) => {
-    setValue(text);
-    rest.onChangeText?.(text);
+    onChangeText?.(text);
   };
 
   const labelTranslateY = animatedLabel.interpolate({

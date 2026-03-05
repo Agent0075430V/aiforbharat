@@ -43,7 +43,7 @@ export async function signUp({ email, password, name }: SignUpParams): Promise<v
         options: {
             userAttributes: {
                 email,
-                name,
+                given_name: name,   // Cognito User Pool requires 'given_name' (not 'name')
             },
         },
     };
@@ -65,8 +65,29 @@ export async function resendConfirmationCode(email: string): Promise<void> {
 // ─── Sign In ──────────────────────────────────────────────────────────────────
 
 export async function signIn({ email, password }: SignInParams): Promise<MedioraUser> {
-    await amplifySignIn({ username: email, password });
-    return getCurrentUser();
+    try {
+        // Use USER_PASSWORD_AUTH instead of SRP (default) to avoid the
+        // crypto.getRandomValues polyfill issue in Expo Go / React Native.
+        const output = await amplifySignIn({
+            username: email,
+            password,
+            options: {
+                authFlowType: 'USER_PASSWORD_AUTH',
+            },
+        });
+        if (!output.isSignedIn) {
+            throw new Error(`Sign-in requires additional step: ${output.nextStep?.signInStep}`);
+        }
+        return getCurrentUser();
+    } catch (err: any) {
+        const errName = err?.name ?? err?.code ?? '';
+        if (errName === 'UserAlreadyAuthenticatedException') {
+            // Already signed in — just return the current session
+            return getCurrentUser();
+        }
+        // Rethrow all other errors (NotAuthorizedException, UserNotFoundException, etc.)
+        throw err;
+    }
 }
 
 // ─── Sign Out ─────────────────────────────────────────────────────────────────
@@ -84,7 +105,7 @@ export async function getCurrentUser(): Promise<MedioraUser> {
     return {
         userId,
         email: attrs.email ?? '',
-        name: attrs.name,
+        name: attrs.given_name,   // User Pool uses 'given_name' as the required name field
     };
 }
 

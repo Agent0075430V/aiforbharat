@@ -74,9 +74,6 @@ export const TopicInput: React.FC<TopicInputProps> = ({
               onChangeText(t);
             }}
             style={{
-              fontFamily: fontFamilies.body.regular,
-              fontSize: fontSizes.sm,
-              color: colors.text.gold,
               marginRight: spacing.sm,
               paddingVertical: spacing.xs,
               paddingHorizontal: spacing.sm,

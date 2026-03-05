@@ -43,7 +43,9 @@ import { randomUUID } from 'crypto';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const REGION = 'ap-south-1';
-const MODEL_ID = 'anthropic.claude-3-5-sonnet-20241022-v2:0';
+// APAC cross-region inference profile — confirmed Active in ap-south-1 (Mumbai)
+// ARN: arn:aws:bedrock:ap-south-1:318276049767:inference-profile/apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+const MODEL_ID = 'apac.anthropic.claude-3-5-sonnet-20241022-v2:0';
 const BUCKET = 'mediora-storage';
 const USERS_TABLE = 'mediora-users';
 const DRAFTS_TABLE = 'mediora-drafts';
@@ -177,7 +179,7 @@ async function translateCaption(text, targetLanguages) {
 
 // ─── Bedrock system prompt builder ────────────────────────────────────────────
 
-function buildSystemPrompt(user) {
+function buildSystemPrompt(user, action) {
     const niche = user?.niche ?? 'general';
     const tone = user?.tone ?? 'engaging';
     const language = user?.language ?? 'en';
@@ -187,20 +189,123 @@ function buildSystemPrompt(user) {
         ? `\nHere are example captions from this creator (match their style):\n${user.pastPostSamples.map((s, i) => `${i + 1}. "${s}"`).join('\n')}`
         : '';
 
-    return `You are Mediora AI, a professional social media content strategist.
+    const creatorContext = `You are Mediora AI.
 Creator niche: ${niche}
 Creator tone: ${tone}
 Preferred language: ${language}
 Voice profile: ${voice}
-${samples}
+${samples}`;
 
-Always respond with a valid JSON object only (no markdown, no code blocks):
+    // ── action:'script' → returns hook/body[]/cta JSON ─────────────────────────
+    if (action === 'script') {
+        return `${creatorContext}
+
+You are a professional video script writer. Write a short-form script.
+Rules:
+- Strong scroll-stopping hook first line
+- Sentences short and spoken-language friendly
+- End with a natural CTA matching the creator's goal
+Respond ONLY with valid JSON (no markdown, no explanation):
 {
-  "caption": "<engaging English caption>",
-  "hashtags": ["<tag1>", "<tag2>", ...],
-  "script": "<short voiceover script in English>",
-  "cta": "<call-to-action phrase>",
-  "engagementScore": <number 1-10>
+  "hook": "<opening hook line>",
+  "body": ["<spoken line 1>", "<spoken line 2>", "<spoken line 3>"],
+  "cta": "<closing call-to-action>",
+  "estimatedDuration": "<e.g. 30-45 seconds>"
+}`;
+    }
+
+    // ── action:'hashtag' → returns {trending,niche,branded} ────────────────────
+    if (action === 'hashtag') {
+        return `${creatorContext}
+
+You are a hashtag strategy expert. Generate highly relevant hashtags.
+Respond ONLY with valid JSON (no markdown, no explanation):
+{
+  "trending": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
+  "niche": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8","#tag9","#tag10"],
+  "branded": ["#tag1","#tag2","#tag3"]
+}`;
+    }
+
+    // ── action:'quiz' → returns archetype analysis ──────────────────────────────
+    if (action === 'quiz') {
+        return `You are Mediora AI. Analyse quiz answers and determine creator archetype.
+Respond ONLY with valid JSON (no markdown, no explanation):
+{
+  "archetype": "EDUCATOR",
+  "archetypeDescription": "<2-sentence description>",
+  "niche": "<niche>",
+  "primaryTone": "<tone>",
+  "suggestedLanguage": "English",
+  "contentStrategy": "<2-sentence strategy>",
+  "topStrengths": ["<strength1>","<strength2>","<strength3>"],
+  "focusAreas": ["<area1>","<area2>"],
+  "postingRecommendation": "<specific recommendation>"
+}`;
+    }
+
+    // ── action:'voice' → returns parsed intent ──────────────────────────────────
+    if (action === 'voice') {
+        return `You are Mediora AI voice assistant. Parse voice commands into structured intents.
+Respond ONLY with valid JSON (no markdown, no explanation):
+{
+  "intent": "generate_captions | generate_hashtags | write_script | navigate | unknown",
+  "parameters": {
+    "topic": "<topic if applicable>",
+    "platform": "<platform if mentioned>",
+    "language": "<language if mentioned>",
+    "screen": "<screen name if navigate intent>"
+  },
+  "confidence": <0.0-1.0>
+}`;
+    }
+
+    // ── default action:'caption' → returns captions[] array ────────────────────
+    return `${creatorContext}
+
+Generate 3 captions (short/medium/long), hashtags, a voiceover script, and a CTA.
+Rules:
+- Line 1 of each caption MUST be a scroll-stopping hook
+- NEVER start with "In today's post" or "I wanted to share"
+- Last line MUST be a CTA (question, save prompt, share ask)
+- Include emojis naturally — not after every sentence
+- Match the creator's tone, not generic AI voice
+
+Respond ONLY with valid JSON (no markdown, no code blocks, no explanation):
+{
+  "captions": [
+    {
+      "type": "short",
+      "text": "<punchy caption under 100 words with hook + CTA>",
+      "engagementScore": <75-95>,
+      "scoreBreakdown": { "hookStrength": <0-25>, "toneMatch": <0-20>, "ctaStrength": <0-20>, "relatability": <0-20>, "languageQuality": <0-15> },
+      "improvementTip": "<one specific improvement suggestion>"
+    },
+    {
+      "type": "medium",
+      "text": "<medium caption 100-200 words>",
+      "engagementScore": <70-90>,
+      "scoreBreakdown": { "hookStrength": <0-25>, "toneMatch": <0-20>, "ctaStrength": <0-20>, "relatability": <0-20>, "languageQuality": <0-15> },
+      "improvementTip": "<one specific improvement suggestion>"
+    },
+    {
+      "type": "long",
+      "text": "<storytelling caption 200+ words>",
+      "engagementScore": <65-85>,
+      "scoreBreakdown": { "hookStrength": <0-25>, "toneMatch": <0-20>, "ctaStrength": <0-20>, "relatability": <0-20>, "languageQuality": <0-15> },
+      "improvementTip": "<one specific improvement suggestion>"
+    }
+  ],
+  "hashtags": {
+    "trending": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
+    "niche": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8","#tag9","#tag10"],
+    "branded": ["#tag1","#tag2","#tag3"]
+  },
+  "script": "<short 30-60 second voiceover script in English>",
+  "cta": "<standalone call-to-action phrase>",
+  "engagementScore": <1-10>,
+  "bestTimeToPost": "<e.g. 7:00 PM>",
+  "contentTip": "<one broader tip about this type of content>"
 }`;
 }
 
@@ -229,10 +334,14 @@ async function handleGenerate(body) {
     const user = await fetchUser(userId);
     console.log('[Generate] User profile fetched:', !!user);
 
+    // action controls which JSON schema Bedrock returns
+    const action = body.action ?? 'caption';
+    const systemPrompt = buildSystemPrompt(user, action);
+
     // Call Bedrock
     const command = new ConverseCommand({
         modelId: MODEL_ID,
-        system: [{ text: buildSystemPrompt(user) }],
+        system: [{ text: systemPrompt }],
         messages: [{ role: 'user', content: [{ text: finalPrompt }] }],
         inferenceConfig: { maxTokens: 1500, temperature: 0.75 },
     });
@@ -245,17 +354,44 @@ async function handleGenerate(body) {
     const parsed = parseJSON(rawText);
     if (!parsed) return err(500, 'Failed to parse Bedrock response', rawText.slice(0, 200));
 
-    const caption_en = parsed.caption ?? '';
-    const hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
+    // For script, hashtag, quiz, voice — return the parsed result directly.
+    // Only the 'caption' action goes through translation + DynamoDB.
+    if (action !== 'caption') {
+        return ok(parsed);
+    }
+
+    // New schema: parsed.captions[] array with short/medium/long variants
+    const captions = Array.isArray(parsed.captions) ? parsed.captions : [];
+    // Best caption for translation = the short one (most shareable)
+    const primaryCaption = captions.find(c => c.type === 'short') ?? captions[0];
+    const caption_en = primaryCaption?.text ?? parsed.caption ?? '';
+
+    // Hashtags — support both old array format and new {trending,niche,branded} object
+    let hashtags = [];
+    if (parsed.hashtags) {
+        if (Array.isArray(parsed.hashtags)) {
+            hashtags = parsed.hashtags;
+        } else {
+            // Flatten the grouped object into a single array
+            hashtags = [
+                ...(parsed.hashtags.trending ?? []),
+                ...(parsed.hashtags.niche ?? []),
+                ...(parsed.hashtags.branded ?? []),
+            ].slice(0, 30);
+        }
+    }
+
     const script = parsed.script ?? '';
     const cta = parsed.cta ?? '';
-    const engagementScore = typeof parsed.engagementScore === 'number' ? parsed.engagementScore : 7;
+    const engagementScore = typeof parsed.engagementScore === 'number'
+        ? (parsed.engagementScore > 10 ? Math.round(parsed.engagementScore / 10) : parsed.engagementScore)
+        : 7;
 
-    // Translate caption to regional languages
+    // Translate the primary English caption to regional languages
     console.log('[Translate] Translating caption to hi, ta, mr, bn');
     const translations = await translateCaption(caption_en, ['hi', 'ta', 'mr', 'bn']);
 
-    // Save draft to DynamoDB
+    // Save draft to DynamoDB (primary caption only)
     const draftId = randomUUID();
     const now = new Date().toISOString();
     const draftItem = {
@@ -280,17 +416,21 @@ async function handleGenerate(body) {
     console.log('[DynamoDB] Saving draft:', draftId);
     await saveDraft(draftItem);
 
+    // Return the full captions[] array + all multilingual fields
     return ok({
         draftId,
-        caption_en,
+        captions,               // ← full array for the CaptionGenerator screen
+        caption_en,             // ← primary caption for backward compat
         caption_hi: draftItem.caption_hi,
         caption_ta: draftItem.caption_ta,
         caption_mr: draftItem.caption_mr,
         caption_bn: draftItem.caption_bn,
-        hashtags,
+        hashtags: parsed.hashtags ?? hashtags,  // keep structured object if available
         script,
         cta,
         engagementScore,
+        bestTimeToPost: parsed.bestTimeToPost ?? '',
+        contentTip: parsed.contentTip ?? '',
     });
 }
 

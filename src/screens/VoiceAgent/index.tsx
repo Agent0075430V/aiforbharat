@@ -5,7 +5,9 @@ import ListeningState from './ListeningState';
 import ProcessingState from './ProcessingState';
 import RespondingState from './RespondingState';
 import { useProfile } from '../../store/ProfileContext';
+import { useAuth } from '../../store/AuthContext';
 import { startRecording, stopRecording } from '../../services/voice/recorder.service';
+import { speak, stopSpeaking } from '../../services/voice/speaker.service';
 import { transcribeAudio, parseVoiceCommand } from '../../services/api';
 import { executeVoiceCommand } from '../../services/voice/executor.service';
 import type { VoiceState, VoiceCommandRecord, CommandIntent } from '../../types/voice.types';
@@ -18,6 +20,7 @@ function makeCommandId(): string {
 export const VoiceAgentScreen: React.FC = () => {
   const navigation = useNavigation();
   const { profile } = useProfile();
+  const { token: userId } = useAuth(); // Cognito userId stored in auth token field
   const [state, setState] = useState<VoiceState>('idle');
   const [commands, setCommands] = useState<VoiceCommandRecord[]>([]);
   const [lastResponse, setLastResponse] = useState<string>('');
@@ -41,6 +44,7 @@ export const VoiceAgentScreen: React.FC = () => {
 
   const handleOrbPress = useCallback(() => {
     if (state === 'idle') {
+      stopSpeaking(); // stop any previous response playback
       setLastTranscript('');
       setLastResponse('');
       startRecording().then((r) => {
@@ -60,7 +64,7 @@ export const VoiceAgentScreen: React.FC = () => {
         const profileOrMock = profile ?? mockInfluencerProfile;
         let transcript = '';
         try {
-          transcript = await transcribeAudio(r.uri);
+          transcript = await transcribeAudio(r.uri, userId ?? 'anonymous');
           setLastTranscript(transcript || '');
           const parsed = await parseVoiceCommand(transcript || '');
           const intent = (parsed?.intent ?? 'unknown') as CommandIntent;
@@ -71,6 +75,10 @@ export const VoiceAgentScreen: React.FC = () => {
             navigate
           );
           setLastResponse(result.spokenResponse);
+          // 🔊 Speak the response aloud
+          if (result.spokenResponse) {
+            speak(result.spokenResponse, { language: 'en-IN' });
+          }
           setCommands((prev) => [
             {
               id: makeCommandId(),
@@ -131,7 +139,7 @@ export const VoiceAgentScreen: React.FC = () => {
       <ProcessingState
         commands={commands}
         transcriptPreview={transcriptPreview}
-        onOrbPress={() => {}}
+        onOrbPress={() => { }}
       />
     );
   }
@@ -152,4 +160,4 @@ export const VoiceAgentScreen: React.FC = () => {
 
 export default VoiceAgentScreen;
 
-export {};
+export { };

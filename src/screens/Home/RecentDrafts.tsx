@@ -34,75 +34,121 @@ export const RecentDrafts: React.FC = () => {
         >
           Recent drafts
         </Text>
-        <Text
-          // eslint-disable-next-line react-native/no-inline-styles
-          style={{
-            fontFamily: fontFamilies.body.medium,
-            fontSize: 12,
-            color: colors.text.gold,
-          }}
-        >
-          View all →
-        </Text>
+        {drafts.length > 0 && (
+          <Pressable onPress={() => (navigation as any).navigate('Content', { screen: 'DraftsList' })}>
+            <Text
+              // eslint-disable-next-line react-native/no-inline-styles
+              style={{
+                fontFamily: fontFamilies.body.medium,
+                fontSize: 12,
+                color: colors.text.gold,
+              }}
+            >
+              View all →
+            </Text>
+          </Pressable>
+        )}
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: spacing.lg }}
-      >
-        {recentDrafts.map((draft) => (
-          <Pressable
-            key={draft.id}
-            onPress={() => (navigation as any).navigate('Content', { screen: 'DraftsList' })}
-            style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
-          >
-          <Card
+
+      {/* Empty state */}
+      {recentDrafts.length === 0 ? (
+        <Pressable onPress={() => (navigation as any).navigate('Content', { screen: 'CaptionGenerator' })}>
+          <View
+            // eslint-disable-next-line react-native/no-inline-styles
             style={{
-              width: 200,
-              marginRight: spacing.md,
+              padding: spacing.lg,
               borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border.subtle,
+              borderStyle: 'dashed',
+              alignItems: 'center',
+              backgroundColor: colors.background.surface,
             }}
           >
-            <View
+            <Text style={{ fontSize: 32, marginBottom: spacing.sm }}>✍️</Text>
+            <Text
               // eslint-disable-next-line react-native/no-inline-styles
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                fontFamily: fontFamilies.heading.medium,
+                fontSize: fontSizes.md,
+                color: colors.text.primary,
+                marginBottom: 4,
               }}
             >
-              <Text
-                // eslint-disable-next-line react-native/no-inline-styles
+              No drafts yet
+            </Text>
+            <Text
+              // eslint-disable-next-line react-native/no-inline-styles
+              style={{
+                fontFamily: fontFamilies.body.regular,
+                fontSize: fontSizes.sm,
+                color: colors.text.muted,
+                textAlign: 'center',
+              }}
+            >
+              Tap to generate your first caption →
+            </Text>
+          </View>
+        </Pressable>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: spacing.lg }}
+        >
+          {recentDrafts.map((draft) => (
+            <Pressable
+              key={draft.id}
+              onPress={() => (navigation as any).navigate('Content', { screen: 'DraftsList' })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+            >
+              <Card
                 style={{
-                  fontFamily: fontFamilies.body.medium,
-                  fontSize: 12,
-                  color: colors.text.secondary,
-                  textTransform: 'uppercase',
+                  width: 200,
+                  marginRight: spacing.md,
+                  borderRadius: radius.lg,
                 }}
               >
-                {draft.platform.toUpperCase()}
-              </Text>
-              <Badge label="Draft" />
-            </View>
-            <Text
-              numberOfLines={3}
-              // eslint-disable-next-line react-native/no-inline-styles
-              style={{
-                marginTop: spacing.sm,
-                fontFamily: fontFamilies.body.regular,
-                fontSize: 14,
-                color: colors.text.primary,
-              }}
-            >
-              {draft.caption.text}
-            </Text>
-          </Card>
-          </Pressable>
-        ))}
-      </ScrollView>
+                <View
+                  // eslint-disable-next-line react-native/no-inline-styles
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    // eslint-disable-next-line react-native/no-inline-styles
+                    style={{
+                      fontFamily: fontFamilies.body.medium,
+                      fontSize: 12,
+                      color: colors.text.secondary,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {draft.platform.toUpperCase()}
+                  </Text>
+                  <Badge label={draft.status === 'posted' ? 'Posted' : 'Draft'} />
+                </View>
+                <Text
+                  numberOfLines={3}
+                  // eslint-disable-next-line react-native/no-inline-styles
+                  style={{
+                    marginTop: spacing.sm,
+                    fontFamily: fontFamilies.body.regular,
+                    fontSize: 14,
+                    color: colors.text.primary,
+                  }}
+                >
+                  {draft.caption.text}
+                </Text>
+              </Card>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 };
 
 export default RecentDrafts;
-

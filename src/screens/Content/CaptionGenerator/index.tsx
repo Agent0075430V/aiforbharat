@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollView, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import TopicInput from './TopicInput';
 import PlatformControls from './PlatformControls';
 import LanguageSelector from './LanguageSelector';
@@ -9,7 +11,7 @@ import EmptyState from './EmptyState';
 import Button from '../../../components/ui/Button';
 import { useProfile } from '../../../store/ProfileContext';
 import { useDrafts } from '../../../store/DraftsContext';
-import { mockCaptionResults, mockInfluencerProfile } from '../../../constants/mockData.constants';
+import { mockInfluencerProfile } from '../../../constants/mockData.constants';
 import { generateCaptions } from '../../../services/api';
 import type { Caption } from '../../../types/content.types';
 import type { Platform } from '../../../types/profile.types';
@@ -21,25 +23,47 @@ import { fontFamilies, fontSizes } from '../../../theme/typography';
 export const CaptionGeneratorScreen: React.FC = () => {
   const { profile } = useProfile();
   const { addDraftFromCaption } = useDrafts();
+  const [userId, setUserId] = useState<string>('anonymous');
   const [topic, setTopic] = useState('');
   const [platform, setPlatform] = useState<Platform>('instagram');
   const [language, setLanguage] = useState<Language>('English');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Caption[]>([]);
 
+  // Load real Cognito userId from AsyncStorage (set on login/signup)
+  useEffect(() => {
+    AsyncStorage.getItem('last_user_id').then((id) => {
+      if (id) setUserId(id);
+    });
+  }, []);
+
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     setLoading(true);
     setResults([]);
-    const profileOrMock = profile ?? mockInfluencerProfile;
+    // Build a profile object with the real userId so Bedrock can fetch the user's
+    // voice profile from DynamoDB and save the draft under the correct account.
+    const profileOrMock = profile
+      ? { ...profile, userId }
+      : { ...mockInfluencerProfile, userId };
     try {
       const data = await generateCaptions(
         topic.trim(),
-        profileOrMock,
+        profileOrMock as any,
         platform,
         language
       );
-      const captions = (data.captions || []).map((c: any, i: number) => ({
+      // Lambda now returns captions[] with short/medium/long variants
+      const rawCaptions = Array.isArray(data?.captions) ? data.captions : [];
+      if (rawCaptions.length === 0) {
+        Toast.show({
+          type: 'info',
+          text1: 'AI generation in progress',
+          text2: 'Bedrock model access not yet enabled. Enable it in AWS Console to use AI.',
+        });
+        return;
+      }
+      const captions = rawCaptions.map((c: any, i: number) => ({
         id: c.id || `gen-${i}-${Date.now()}`,
         type: c.type || 'short',
         text: c.text || '',
@@ -57,8 +81,13 @@ export const CaptionGeneratorScreen: React.FC = () => {
         generatedAt: new Date().toISOString(),
       }));
       setResults(captions);
-    } catch {
-      setResults(mockCaptionResults);
+    } catch (err: any) {
+      console.warn('[CaptionGenerator] Bedrock call failed:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'AI unavailable',
+        text2: 'Enable Bedrock model access in AWS Console to generate captions.',
+      });
     } finally {
       setLoading(false);
     }
