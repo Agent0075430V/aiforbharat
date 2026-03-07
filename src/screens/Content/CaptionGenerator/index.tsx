@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -37,8 +37,9 @@ export const CaptionGeneratorScreen: React.FC = () => {
     });
   }, []);
 
-  const handleGenerate = async () => {
-    if (!topic.trim()) return;
+  const handleGenerate = useCallback(async (overrideTopic?: string) => {
+    const activeTopic = (overrideTopic ?? topic).trim();
+    if (!activeTopic) return;
     setLoading(true);
     setResults([]);
     // Build a profile object with the real userId so Bedrock can fetch the user's
@@ -48,7 +49,7 @@ export const CaptionGeneratorScreen: React.FC = () => {
       : { ...mockInfluencerProfile, userId };
     try {
       const data = await generateCaptions(
-        topic.trim(),
+        activeTopic,
         profileOrMock as any,
         platform,
         language
@@ -86,21 +87,29 @@ export const CaptionGeneratorScreen: React.FC = () => {
       Toast.show({
         type: 'error',
         text1: 'AI unavailable',
-        text2: 'Enable Bedrock model access in AWS Console to generate captions.',
+        text2: 'Add EXPO_PUBLIC_GROQ_API_KEY to your .env file to enable AI captions.',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [topic, platform, language, profile, userId]);
 
   const handleSaveDraft = (caption: Caption) => {
     addDraftFromCaption(topic.trim() || caption.text.slice(0, 50), caption, platform);
+    Toast.show({
+      type: 'success',
+      text1: '✅ Draft saved!',
+      text2: 'Find it in your Drafts tab.',
+      visibilityTime: 2000,
+    });
   };
 
   const handleRegenerate = (caption: Caption) => {
-    setTopic(topic || caption.text.slice(0, 50));
+    // Use the caption text as fallback topic to avoid stale-closure issues with topic state
+    const activeTopic = topic.trim() || caption.text.slice(0, 50);
+    setTopic(activeTopic);
     setResults([]);
-    handleGenerate();
+    handleGenerate(activeTopic);
   };
 
   return (
@@ -138,7 +147,7 @@ export const CaptionGeneratorScreen: React.FC = () => {
 
       <Button
         title={loading ? 'AI is writing...' : '✨ Generate Captions'}
-        onPress={handleGenerate}
+        onPress={() => handleGenerate()}
         disabled={!topic.trim() || loading}
         loading={loading}
         style={{ marginTop: spacing.xl }}

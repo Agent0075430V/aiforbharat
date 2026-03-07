@@ -19,7 +19,7 @@ export const ProfileConfirm: React.FC = () => {
     const confirmedProfile = profile ?? mockInfluencerProfile;
     // 1. Save to AsyncStorage
     if (!profile) await setProfile(confirmedProfile);
-    // 2. Save to DynamoDB
+    // 2. Save to DynamoDB — including full profileJson for restoration after sign-out
     try {
       await saveUser({
         userId: confirmedProfile.userId,
@@ -27,6 +27,7 @@ export const ProfileConfirm: React.FC = () => {
         niche: confirmedProfile.niche,
         tone: confirmedProfile.tone,
         language: confirmedProfile.language,
+        profileJson: JSON.stringify(confirmedProfile),
       });
     } catch (err) {
       console.warn('[Mediora] DynamoDB saveUser failed (non-fatal):', err);

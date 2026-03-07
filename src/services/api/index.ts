@@ -1,10 +1,13 @@
 /**
  * src/services/api/index.ts
  *
- * AI Service Layer — ALL AI calls now go through AWS API Gateway → Lambda → Bedrock.
- * Groq and Gemini have been removed. Function signatures are preserved so no screen files need changing.
+ * AI Service Layer — Two-tier strategy:
+ *   1. Primary:  AWS API Gateway → Lambda → Bedrock (when active)
+ *   2. Fallback: Groq (Llama 3.3 70B) direct API — FREE tier available
  *
- * Flow: UI screen → this file → mediora.service.ts → apiService.ts → API Gateway → Lambda → Bedrock
+ * Flow: UI screen → this file → tries Bedrock → if fails, tries Groq
+ * Set EXPO_PUBLIC_GROQ_API_KEY in .env to enable the Groq fallback.
+ * Get a FREE key at https://console.groq.com/keys
  */
 
 import {
@@ -14,6 +17,7 @@ import {
   getUser,
 } from '../aws/mediora.service';
 import { parseJSONSafely } from './parser';
+import { callGroqForJSON } from './groq.service';
 import {
   buildCaptionPrompt,
   buildQuizAnalysisPrompt,
@@ -33,10 +37,42 @@ function getUserId(profile: InfluencerProfile): string {
   return (profile as any).userId ?? (profile as any).id ?? 'anonymous';
 }
 
-/** Call /generate with a specific action and return the full parsed result from Lambda */
+/**
+ * callGenerate — two-tier AI call:
+ *  1. Tries AWS Bedrock via Lambda (primary)
+ *  2. Falls back to Gemini 1.5 Flash if Bedrock throws
+ */
 async function callGenerate(userId: string, prompt: string, action = 'caption'): Promise<any> {
-  return generateCaption({ userId, prompt, action } as any);
+  // ── Tier 1: AWS Bedrock ───────────────────────────────────────────────────
+  try {
+    const result = await generateCaption({ userId, prompt, action } as any);
+    // Bedrock succeeded — validate it returned something real
+    const hasData = result && typeof result === 'object' && Object.keys(result).length > 0;
+    if (hasData) {
+      console.info(`[AI] Bedrock returned result for action=${action}`);
+      return result;
+    }
+    throw new Error('Bedrock returned empty result');
+  } catch (bedrockErr: any) {
+    console.warn(`[AI] Bedrock unavailable for action=${action}:`, bedrockErr?.message ?? bedrockErr);
+  }
+
+  // ── Tier 2: Groq (Llama 3.3 70B) fallback ────────────────────────────────
+  try {
+    console.info(`[AI] Falling back to Groq for action=${action}`);
+    const result = await callGroqForJSON(prompt);
+    return result;
+  } catch (groqErr: any) {
+    console.error(`[AI] Groq fallback also failed for action=${action}:`, groqErr?.message ?? groqErr);
+    throw new Error(
+      `AI unavailable: both Bedrock and Groq failed. ` +
+      `Set EXPO_PUBLIC_GROQ_API_KEY in .env for offline AI. ` +
+      `Get a FREE key at https://console.groq.com/keys. ` +
+      `Groq error: ${groqErr?.message ?? 'unknown'}`
+    );
+  }
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ▌ Public API (same signatures as before — screens unchanged)
@@ -129,27 +165,52 @@ export const parseVoiceCommand = async (transcript: string) => {
  * Uploads a local audio URI to S3 then transcribes it via Amazon Transcribe.
  *
  * @param audioUri  - file:// URI from expo-av
- * @param userId    - Cognito userId (required for S3 path scoping). Pass the
- *                    value from useAuth().token which stores the Cognito sub.
+ * @param userId    - Cognito userId (required for S3 path scoping).
+ *
+ * Throws with a descriptive message at each stage so callers can tell the user
+ * exactly what went wrong (upload vs transcription vs empty result).
  */
 export const transcribeAudio = async (audioUri: string, userId = 'anonymous'): Promise<string> => {
-  // 1. Get a presigned S3 upload URL from Lambda
-  const fileName = `recording_${Date.now()}.m4a`;
-  const { data: uploadData } = await post<Record<string, string>, { presignedUrl: string; fileKey: string }>(
-    '/upload',
-    { userId, fileName, fileType: 'audio/m4a', uploadType: 'voice', operation: 'upload' },
-  );
+  if (!audioUri) {
+    throw new Error('No audio URI provided for transcription');
+  }
 
-  // 2. PUT the audio file directly to S3 via the presigned URL
-  const fileRes = await fetch(audioUri);
-  const blob = await fileRes.blob();
-  await fetch(uploadData.presignedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'audio/m4a' },
-    body: blob,
-  });
+  // ── Stage 1: Get presigned upload URL ────────────────────────────────────
+  let uploadData: { presignedUrl: string; fileKey: string };
+  try {
+    const { data } = await post<Record<string, string>, { presignedUrl: string; fileKey: string }>(
+      '/upload',
+      { userId, fileName: `recording_${Date.now()}.m4a`, fileType: 'audio/m4a', uploadType: 'voice', operation: 'upload' },
+    );
+    uploadData = data;
+  } catch (e: any) {
+    throw new Error(`[transcribeAudio] Failed to get upload URL: ${e?.message ?? e}`);
+  }
 
-  // 3. Transcribe via Lambda → Amazon Transcribe
-  const result = await transcribeVoiceNote({ userId, s3AudioKey: uploadData.fileKey });
-  return result.transcript;
+  // ── Stage 2: Upload audio to S3 ──────────────────────────────────────────
+  try {
+    const fileRes = await fetch(audioUri);
+    const blob = await fileRes.blob();
+    const uploadRes = await fetch(uploadData.presignedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'audio/m4a' },
+      body: blob,
+    });
+    if (!uploadRes.ok) {
+      throw new Error(`S3 upload returned HTTP ${uploadRes.status}`);
+    }
+  } catch (e: any) {
+    throw new Error(`[transcribeAudio] Failed to upload audio: ${e?.message ?? e}`);
+  }
+
+  // ── Stage 3: Transcribe via Lambda → Amazon Transcribe ───────────────────
+  try {
+    const result = await transcribeVoiceNote({ userId, s3AudioKey: uploadData.fileKey });
+    if (!result?.transcript) {
+      throw new Error('Transcription returned empty result');
+    }
+    return result.transcript;
+  } catch (e: any) {
+    throw new Error(`[transcribeAudio] Transcription failed: ${e?.message ?? e}`);
+  }
 };

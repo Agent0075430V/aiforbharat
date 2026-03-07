@@ -67,7 +67,7 @@ export const ScriptWriterScreen: React.FC = () => {
         Toast.show({
           type: 'info',
           text1: 'AI unavailable',
-          text2: 'Enable Bedrock model access in AWS Console to generate scripts.',
+          text2: 'Add EXPO_PUBLIC_GROQ_API_KEY to your .env to generate scripts.',
         });
         return;
       }
@@ -76,7 +76,7 @@ export const ScriptWriterScreen: React.FC = () => {
       Toast.show({
         type: 'error',
         text1: 'AI unavailable',
-        text2: 'Enable Bedrock model access in AWS Console to generate scripts.',
+        text2: 'Add EXPO_PUBLIC_GROQ_API_KEY to your .env to generate scripts.',
       });
     } finally {
       setLoading(false);

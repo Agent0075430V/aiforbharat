@@ -104,7 +104,13 @@ export const ProfileSection: React.FC = () => {
 
             // Sync to DynamoDB
             if (userId) {
-                await saveUser({ userId, niche, tone, language });
+                await saveUser({
+                    userId,
+                    niche,
+                    tone,
+                    language,
+                    profileJson: JSON.stringify(updatedProfile),
+                });
             }
 
             Toast.show({ type: 'success', text1: 'Profile updated ✓' });

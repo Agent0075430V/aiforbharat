@@ -9,7 +9,7 @@ import PasswordInput from '../../components/ui/Input/PasswordInput';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../store/AuthContext';
 import { signIn as cognitoSignIn } from '../../services/aws/authService';
-import { saveUser } from '../../services/aws/mediora.service';
+import { saveUser, getFullProfile } from '../../services/aws/mediora.service';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { AuthStackParamList } from '../../types/navigation.types';
 
@@ -54,6 +54,19 @@ export const LoginScreen: React.FC = () => {
         console.warn('[Mediora] DynamoDB saveUser failed (non-fatal):', dbErr);
       });
       await AsyncStorage.setItem('last_user_id', user.userId);
+
+      // Restore the user's full profile from DynamoDB so they don't redo onboarding
+      try {
+        const savedProfile = await getFullProfile(user.userId);
+        if (savedProfile) {
+          // Stamp the correct userId in case it drifted, then write to AsyncStorage
+          const restoredProfile = { ...savedProfile, userId: user.userId };
+          await AsyncStorage.setItem('influencer_profile', JSON.stringify(restoredProfile));
+        }
+      } catch (profileErr) {
+        console.warn('[Login] Could not restore profile from DynamoDB (non-fatal):', profileErr);
+      }
+
       await navigateAfterAuth();
     } catch (err: any) {
       const errCode = err?.name ?? err?.code ?? '';

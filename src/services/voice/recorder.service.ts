@@ -11,32 +11,42 @@ export interface RecordingState {
 let currentRecording: Audio.Recording | null = null;
 
 export const startRecording = async (): Promise<RecordingState> => {
+  // Clean up any stale recording from a previous session
+  if (currentRecording) {
+    try {
+      await currentRecording.stopAndUnloadAsync();
+    } catch {
+      // ignore — might already be unloaded
+    }
+    currentRecording = null;
+  }
+
   try {
-    // Request permissions and configure for high-quality voice capture
+    // 1. Request microphone permission
     const permission = await Audio.requestPermissionsAsync();
     if (!permission.granted) {
       return { status: 'error', error: 'Microphone permission not granted' };
     }
 
+    // 2. Set audio mode for recording
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
       shouldDuckAndroid: true,
-      interruptionModeIOS: 1 /* InterruptionModeIOS.DoNotMix */,
-      interruptionModeAndroid: 1 /* InterruptionModeAndroid.DoNotMix */,
+      interruptionModeIOS: 1,    // DoNotMix
+      interruptionModeAndroid: 1, // DoNotMix
     });
 
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(
+    // 3. Create and start recording using the recommended async factory
+    const { recording } = await Audio.Recording.createAsync(
       Audio.RecordingOptionsPresets.HIGH_QUALITY
     );
-    await recording.startAsync();
     currentRecording = recording;
 
     return { status: 'recording' };
   } catch (error: any) {
-    console.warn('startRecording error', error);
+    console.warn('[Recorder] startRecording error:', error);
     currentRecording = null;
     return { status: 'error', error: error?.message ?? 'Failed to start recording' };
   }
@@ -51,9 +61,24 @@ export const stopRecording = async (): Promise<RecordingState> => {
     await currentRecording.stopAndUnloadAsync();
     const uri = currentRecording.getURI() ?? undefined;
     currentRecording = null;
+
+    // Reset audio mode back to playback after recording ends
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: false,
+    }).catch(() => {
+      // Non-fatal — don't block on this
+    });
+
+    if (!uri) {
+      return { status: 'error', error: 'Recording produced no audio file' };
+    }
+
     return { status: 'stopped', uri };
   } catch (error: any) {
-    console.warn('stopRecording error', error);
+    console.warn('[Recorder] stopRecording error:', error);
     currentRecording = null;
     return { status: 'error', error: error?.message ?? 'Failed to stop recording' };
   }
@@ -70,4 +95,3 @@ export const cancelRecording = async (): Promise<void> => {
     currentRecording = null;
   }
 };
-

@@ -5,11 +5,12 @@ import { useAuth } from '../../store/AuthContext';
 import { useProfile } from '../../store/ProfileContext';
 import { signOut as cognitoSignOut } from '../../services/aws/authService';
 import { ProfileSection } from './ProfileSection';
+import { PlatformConnections } from './PlatformConnections';
 import colors from '../../theme/colors';
 import { fontFamilies, fontSizes } from '../../theme/typography';
 import { spacing, radius } from '../../theme/spacing';
 
-type SettingsTab = 'profile' | 'app';
+type SettingsTab = 'profile' | 'social' | 'app';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -75,7 +76,7 @@ export const SettingsScreen: React.FC = () => {
           padding: 4,
           marginBottom: spacing.xl,
         }}>
-          {(['profile', 'app'] as SettingsTab[]).map((tab) => (
+          {(['profile', 'social', 'app'] as SettingsTab[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab)}
@@ -93,7 +94,7 @@ export const SettingsScreen: React.FC = () => {
                 color: activeTab === tab ? colors.text.primary : colors.text.muted,
                 textTransform: 'capitalize',
               }}>
-                {tab === 'profile' ? '👤 Profile' : '⚙️ App'}
+                {tab === 'profile' ? '👤 Profile' : tab === 'social' ? '🔗 Social' : '⚙️ App'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -101,6 +102,9 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Profile Tab */}
         {activeTab === 'profile' && <ProfileSection />}
+
+        {/* Social Accounts Tab */}
+        {activeTab === 'social' && <PlatformConnections />}
 
         {/* App Tab */}
         {activeTab === 'app' && (

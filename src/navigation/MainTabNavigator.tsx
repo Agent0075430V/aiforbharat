@@ -34,7 +34,14 @@ export const MainTabNavigator: React.FC = () => {
         <Tab.Screen name="AnalyticsStack" component={AnalyticsStackNavigator} />
         <Tab.Screen name="BrandStack" component={BrandStackNavigator} />
       </Tab.Navigator>
-      <VoiceFAB />
+      {/* pointerEvents="box-none" lets touches pass through the container
+          to content below; only the FAB button itself captures touches */}
+      <View
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        pointerEvents="box-none"
+      >
+        <VoiceFAB />
+      </View>
     </View>
   );
 };

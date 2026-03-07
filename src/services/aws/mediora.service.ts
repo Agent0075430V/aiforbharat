@@ -39,6 +39,8 @@ export interface UserData {
     pastPostSamples?: string[];
     /** Posts per week target */
     postingFrequency?: number;
+    /** Full serialised InfluencerProfile — used to restore profile after sign-out */
+    profileJson?: string;
 }
 
 export interface DraftData {
@@ -206,6 +208,22 @@ export async function saveUser(userData: UserData): Promise<{ success: boolean }
 export async function getUser(userId: string): Promise<UserData | null> {
     const { data } = await get<UserData | null>(`${PATHS.user}?userId=${encodeURIComponent(userId)}`);
     return data;
+}
+
+/**
+ * getFullProfile
+ * Fetches a user from DynamoDB and returns the full InfluencerProfile if it
+ * was previously serialised into the `profileJson` field by saveUser.
+ * Returns null when no profile has been saved yet (new user).
+ */
+export async function getFullProfile(userId: string): Promise<import('../../types/profile.types').InfluencerProfile | null> {
+    try {
+        const user = await getUser(userId);
+        if (!user?.profileJson) return null;
+        return JSON.parse(user.profileJson);
+    } catch {
+        return null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
