@@ -6,6 +6,7 @@ import { useProfile } from '../../store/ProfileContext';
 import { signOut as cognitoSignOut } from '../../services/aws/authService';
 import { ProfileSection } from './ProfileSection';
 import { PlatformConnections } from './PlatformConnections';
+import MedioraHeader from '../../components/layout/MedioraHeader';
 import colors from '../../theme/colors';
 import { fontFamilies, fontSizes } from '../../theme/typography';
 import { spacing, radius } from '../../theme/spacing';
@@ -42,6 +43,7 @@ export const SettingsScreen: React.FC = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.base }}>
+      <MedioraHeader showBack />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}

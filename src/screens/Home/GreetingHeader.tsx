@@ -91,27 +91,6 @@ export const GreetingHeader: React.FC = () => {
           </Text>
         </View>
       </Pressable>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text
-          // eslint-disable-next-line react-native/no-inline-styles
-          style={{
-            marginRight: spacing.md,
-            fontSize: 18,
-            color: colors.text.secondary,
-          }}
-        >
-          🔔
-        </Text>
-        <Text
-          // eslint-disable-next-line react-native/no-inline-styles
-          style={{
-            fontSize: 18,
-            color: colors.text.secondary,
-          }}
-        >
-          🔍
-        </Text>
-      </View>
     </View>
   );
 };

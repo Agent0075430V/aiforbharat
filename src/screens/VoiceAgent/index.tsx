@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import IdleState from './IdleState';
@@ -7,11 +8,16 @@ import ProcessingState from './ProcessingState';
 import RespondingState from './RespondingState';
 import { useProfile } from '../../store/ProfileContext';
 import { useAuth } from '../../store/AuthContext';
-import { startRecording, stopRecording } from '../../services/voice/recorder.service';
+import { useDrafts } from '../../store/DraftsContext';
+import { startRecording, stopRecording, cancelRecording } from '../../services/voice/recorder.service';
 import { speak, stopSpeaking } from '../../services/voice/speaker.service';
-import { transcribeAudio, parseVoiceCommand } from '../../services/api';
+import { parseVoiceCommand } from '../../services/api';
+import { transcribeRecording } from '../../services/voice/transcriber.service';
 import { executeVoiceCommand } from '../../services/voice/executor.service';
 import { classifyIntentLocally } from '../../services/voice/localIntent.service';
+import colors from '../../theme/colors';
+import { spacing, radius } from '../../theme/spacing';
+import { fontFamilies, fontSizes } from '../../theme/typography';
 import type { VoiceState, VoiceCommandRecord, CommandIntent } from '../../types/voice.types';
 import type { ParsedCommand } from '../../types/voice.types';
 import { mockInfluencerProfile } from '../../constants/mockData.constants';
@@ -21,11 +27,11 @@ function makeCommandId(): string {
 }
 
 export const VoiceAgentScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { profile } = useProfile();
+  const { addDraftFromCaption } = useDrafts();
 
   // userId: auth token takes priority; AsyncStorage is the fallback.
-  // Stored as state so useCallback closures always get the fresh value.
   const { token: authToken } = useAuth();
   const [userId, setUserId] = useState<string>(authToken ?? 'anonymous');
 
@@ -46,14 +52,47 @@ export const VoiceAgentScreen: React.FC = () => {
     });
   }, [authToken]);
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
+  // ─── Close handler ─────────────────────────────────────────────────────────
 
+  const handleClose = useCallback(async () => {
+    // Stop any active recording and speech before leaving
+    if (state === 'listening') {
+      await cancelRecording();
+    }
+    stopSpeaking();
+    processingRef.current = false;
+    // Go back to previous screen (the FAB opens VoiceAgent as a stack screen)
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      (navigation as any).navigate('App');
+    }
+  }, [navigation, state]);
+
+  // ─── Navigation helper ─────────────────────────────────────────────────
+
+  /**
+   * navigate(tab, screen?) — navigates from the VoiceAgent stack screen
+   * back to the main App tab navigator then to the correct tab + inner screen.
+   *
+   * Navigation tree:
+   *   AppNavigator (Root Stack)
+   *     └─ 'App' → MainTabNavigator
+   *           ├─ 'HomeStack'     → Home, Settings
+   *           ├─ 'ContentStack'  → ContentHub, CaptionGenerator, …
+   *           ├─ 'CalendarStack' → Calendar
+   *           ├─ 'AnalyticsStack'→ Analytics
+   *           └─ 'BrandStack'    → Brands, …
+   */
   const navigate = useCallback(
-    (screen: string) => {
-      const root = navigation.getParent();
-      root?.navigate('App' as never);
+    (tab: string, screen?: string) => {
+      // First go back to App (closes VoiceAgent modal)
+      navigation.navigate('App', {
+        screen: tab,
+        params: screen ? { screen } : undefined,
+      });
     },
-    [navigation]
+    [navigation],
   );
 
   const addCommand = useCallback(
@@ -75,9 +114,9 @@ export const VoiceAgentScreen: React.FC = () => {
 
   /** Deliver a voice response to the user and log it */
   const respond = useCallback(
-    (transcript: string, intent: CommandIntent, msg: string, success: boolean) => {
+    async (transcript: string, intent: CommandIntent, msg: string, success: boolean) => {
       setLastResponse(msg);
-      speak(msg, { language: 'en-IN' });
+      await speak(msg, { language: 'en-IN' }); // async on native (voice selection), sync on web
       addCommand(transcript, intent, msg, success);
       setState('responding');
       processingRef.current = false;
@@ -180,22 +219,12 @@ export const VoiceAgentScreen: React.FC = () => {
 
         try {
           // ── Stage 1: Transcribe ─────────────────────────────────────────────
-          // Try AWS Transcribe. If it fails, we still have the local classifier
-          // for intent — we just won't have a text transcript.
-          try {
-            transcript = await transcribeAudio(r.uri, userId);
-          } catch (txErr: any) {
-            console.warn('[VoiceAgent] AWS Transcribe unavailable:', txErr?.message ?? txErr);
-            // Service is down — tell the user clearly instead of silently failing
-            const msg =
-              'Voice transcription service is currently unavailable. ' +
-              'Please check your internet connection, or type your request in the Caption Generator.';
-            respond('(transcription failed)', 'unknown', msg, false);
-            return;
-          }
+          // transcribeRecording tries AWS first, then Groq Whisper automatically.
+          // If both fail it throws a human-readable error caught below.
+          transcript = await transcribeRecording(r.uri, userId);
 
           if (!transcript?.trim()) {
-            respond('(empty)', 'unknown', "I couldn't make out what you said. Please try again, speaking clearly.", false);
+            respond('(empty)', 'unknown', "I couldn't make out what you said. Please speak clearly and try again.", false);
             return;
           }
 
@@ -205,13 +234,28 @@ export const VoiceAgentScreen: React.FC = () => {
           const parsed = await parseIntent(transcript);
 
           // ── Stage 3: Execute ────────────────────────────────────────────────
-          const result = await executeVoiceCommand(parsed, profileOrMock, navigate);
+          const result = await executeVoiceCommand(parsed, profileOrMock, {
+            navigate,
+            saveDraftFromCaption: addDraftFromCaption,
+          });
 
           respond(transcript, parsed.intent, result.spokenResponse, result.success);
 
         } catch (e: any) {
-          console.warn('[VoiceAgent] Unexpected error:', e?.message ?? e);
-          respond(transcript || '(error)', 'unknown', 'Something went wrong. Please try again.', false);
+          const errMsg: string = e?.message ?? '';
+          console.warn('[VoiceAgent] Pipeline error:', errMsg);
+
+          // Show the real transcription error if it's user-readable
+          const isTranscriptionErr =
+            errMsg.startsWith('Voice transcription') ||
+            errMsg.startsWith('Recording is too short') ||
+            errMsg.startsWith('Failed to read recorded');
+
+          const userMsg = isTranscriptionErr
+            ? errMsg.replace(/^Voice transcription error:\s*/i, '')  // strip prefix for UI
+            : 'Something went wrong. Please try again.';
+
+          respond(transcript || '(error)', 'unknown', userMsg, false);
         }
       });
       return;
@@ -234,39 +278,90 @@ export const VoiceAgentScreen: React.FC = () => {
 
   const transcriptPreview = lastTranscript || commands[0]?.transcript;
 
+  /** The ✕ close button — always visible in every state */
+  const CloseButton = (
+    <Pressable
+      onPress={handleClose}
+      style={closeStyles.btn}
+      hitSlop={12}
+    >
+      <Text style={closeStyles.btnText}>✕</Text>
+    </Pressable>
+  );
+
   if (state === 'listening') {
     return (
-      <ListeningState
-        commands={commands}
-        transcriptPreview={transcriptPreview}
-        onOrbPress={handleOrbPress}
-      />
+      <View style={{ flex: 1 }}>
+        {CloseButton}
+        <ListeningState
+          commands={commands}
+          transcriptPreview={transcriptPreview}
+          onOrbPress={handleOrbPress}
+        />
+      </View>
     );
   }
 
   if (state === 'processing') {
     return (
-      <ProcessingState
-        commands={commands}
-        transcriptPreview={transcriptPreview}
-        onOrbPress={() => { }}
-      />
+      <View style={{ flex: 1 }}>
+        {CloseButton}
+        <ProcessingState
+          commands={commands}
+          transcriptPreview={transcriptPreview}
+          onOrbPress={() => { }}
+        />
+      </View>
     );
   }
 
   if (state === 'responding') {
     return (
-      <RespondingState
-        commands={commands}
-        transcriptPreview={transcriptPreview}
-        responsePreview={lastResponse}
-        onOrbPress={handleOrbPress}
-      />
+      <View style={{ flex: 1 }}>
+        {CloseButton}
+        <RespondingState
+          commands={commands}
+          transcriptPreview={transcriptPreview}
+          responsePreview={lastResponse}
+          onOrbPress={handleOrbPress}
+        />
+      </View>
     );
   }
 
-  return <IdleState commands={commands} onOrbPress={handleOrbPress} />;
+  // idle
+  return (
+    <View style={{ flex: 1 }}>
+      {CloseButton}
+      <IdleState commands={commands} onOrbPress={handleOrbPress} />
+    </View>
+  );
 };
+
+// ─── Close button styles ──────────────────────────────────────────────────────
+
+const closeStyles = StyleSheet.create({
+  btn: {
+    position: 'absolute',
+    top: spacing.xl,
+    right: spacing.lg,
+    zIndex: 100,
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.background.surface,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnText: {
+    fontFamily: fontFamilies.body.medium,
+    fontSize: fontSizes.md,
+    color: colors.text.secondary,
+    lineHeight: 20,
+  },
+});
 
 export default VoiceAgentScreen;
 

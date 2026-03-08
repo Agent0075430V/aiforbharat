@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ContentStackParamList } from '../../../types/navigation.types';
 import Card from '../../../components/ui/Card';
 import BottomSheet, { type BottomSheetRef } from '../../../components/ui/BottomSheet';
+import MedioraHeader from '../../../components/layout/MedioraHeader';
 import useHaptics from '../../../hooks/useHaptics';
 import { useDrafts } from '../../../store/DraftsContext';
 import type { Draft, DraftStatus } from '../../../types/content.types';
@@ -51,13 +52,20 @@ export const DraftsListScreen: React.FC = () => {
     editSheetRef.current?.snapToIndex(0);
   };
 
+  // Called when user taps Cancel / Save inside the sheet — closes programmatically
   const handleEditClose = () => {
     editSheetRef.current?.snapToIndex(-1);
+    // State is cleared via handleSheetClosed so there's no loop
+  };
+
+  // Called by BottomSheet's onClose (backdrop tap / back button) — clears state
+  const handleSheetClosed = () => {
     setEditingDraftId(null);
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.base }}>
+      <MedioraHeader showBack />
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
         showsVerticalScrollIndicator={false}
@@ -179,12 +187,13 @@ export const DraftsListScreen: React.FC = () => {
         ref={editSheetRef}
         initialIndex={-1}
         snapPoints={['75%', '95%']}
-        onClose={handleEditClose}
+        onClose={handleSheetClosed}
       >
         {editingDraftId ? (
           <DraftEditSheet
             draftId={editingDraftId}
             onClose={handleEditClose}
+            onSaved={handleEditClose}
           />
         ) : null}
       </BottomSheet>

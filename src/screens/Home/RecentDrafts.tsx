@@ -35,7 +35,7 @@ export const RecentDrafts: React.FC = () => {
           Recent drafts
         </Text>
         {drafts.length > 0 && (
-          <Pressable onPress={() => (navigation as any).navigate('Content', { screen: 'DraftsList' })}>
+          <Pressable onPress={() => (navigation as any).navigate('ContentStack', { screen: 'DraftsList' })}>
             <Text
               // eslint-disable-next-line react-native/no-inline-styles
               style={{
@@ -52,7 +52,7 @@ export const RecentDrafts: React.FC = () => {
 
       {/* Empty state */}
       {recentDrafts.length === 0 ? (
-        <Pressable onPress={() => (navigation as any).navigate('Content', { screen: 'CaptionGenerator' })}>
+        <Pressable onPress={() => (navigation as any).navigate('ContentStack', { screen: 'CaptionGenerator' })}>
           <View
             // eslint-disable-next-line react-native/no-inline-styles
             style={{
@@ -99,7 +99,7 @@ export const RecentDrafts: React.FC = () => {
           {recentDrafts.map((draft) => (
             <Pressable
               key={draft.id}
-              onPress={() => (navigation as any).navigate('Content', { screen: 'DraftsList' })}
+              onPress={() => (navigation as any).navigate('ContentStack', { screen: 'DraftsList' })}
               style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
             >
               <Card

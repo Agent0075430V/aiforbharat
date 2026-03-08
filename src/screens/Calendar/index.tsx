@@ -6,6 +6,7 @@ import WeekView from './WeekView';
 import MonthView from './MonthView';
 import GenerateWeekSheet from './GenerateWeekSheet';
 import DayDetailSheet from './DayDetailSheet';
+import MedioraHeader from '../../components/layout/MedioraHeader';
 import type { CalendarDay } from '../../types/calendar.types';
 import { mockCalendarDays, mockInfluencerProfile } from '../../constants/mockData.constants';
 import { useProfile } from '../../store/ProfileContext';
@@ -69,8 +70,14 @@ export const CalendarScreen: React.FC = () => {
     generateSheetRef.current?.snapToIndex(0);
   };
 
+  // Programmatic close (Cancel button inside sheet) — snap only, no callback loop
   const handleCloseGenerateSheet = () => {
     generateSheetRef.current?.snapToIndex(-1);
+  };
+
+  // User-initiated close (backdrop/back) — no snap needed, sheet already hides
+  const handleGenerateSheetClosed = () => {
+    // nothing extra needed; sheet already hidden by BottomSheet
   };
 
   const handleGenerateWeek = async () => {
@@ -102,6 +109,14 @@ export const CalendarScreen: React.FC = () => {
     dayDetailSheetRef.current?.snapToIndex(-1);
   };
 
+  const handleSaveDay = (updated: CalendarDay) => {
+    setCalendarDays((prev) =>
+      prev.map((d) => (d.date === updated.date ? updated : d))
+    );
+    // Keep the sheet open so the user can see their saved changes
+    setSelectedDay(updated);
+  };
+
   const handleMonthSelectDate = (date: string) => {
     haptics.light();
     setSelectedDate(date);
@@ -113,6 +128,7 @@ export const CalendarScreen: React.FC = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.base }}>
+      <MedioraHeader showBack={false} />
       <ScrollView
         contentContainerStyle={{
           padding: spacing.lg,
@@ -303,7 +319,7 @@ export const CalendarScreen: React.FC = () => {
         ref={generateSheetRef}
         initialIndex={-1}
         snapPoints={['40%']}
-        onClose={handleCloseGenerateSheet}
+        onClose={handleGenerateSheetClosed}
       >
         <GenerateWeekSheet
           weekLabel={weekLabel}
@@ -316,11 +332,15 @@ export const CalendarScreen: React.FC = () => {
       <BottomSheet
         ref={dayDetailSheetRef}
         initialIndex={-1}
-        snapPoints={['50%', '85%']}
+        snapPoints={['92%']}
         onClose={handleCloseDayDetail}
       >
         {selectedDay ? (
-          <DayDetailSheet day={selectedDay} onClose={handleCloseDayDetail} />
+          <DayDetailSheet
+            day={selectedDay}
+            onClose={handleCloseDayDetail}
+            onSave={handleSaveDay}
+          />
         ) : null}
       </BottomSheet>
     </View>

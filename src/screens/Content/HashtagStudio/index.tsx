@@ -5,6 +5,7 @@ import HashtagResults from './HashtagResults';
 import SelectedBar from './SelectedBar';
 import RecentSets from './RecentSets';
 import Button from '../../../components/ui/Button';
+import MedioraHeader from '../../../components/layout/MedioraHeader';
 import { useProfile } from '../../../store/ProfileContext';
 import { mockRecentHashtagSets, mockInfluencerProfile } from '../../../constants/mockData.constants';
 import { generateHashtags } from '../../../services/api';
@@ -95,7 +96,8 @@ export const HashtagStudioScreen: React.FC = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background.base }}>
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+      <MedioraHeader showBack />
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
         <Text
           style={{
             fontFamily: fontFamilies.heading.semibold,

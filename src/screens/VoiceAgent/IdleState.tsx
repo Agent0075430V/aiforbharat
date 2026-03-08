@@ -25,4 +25,4 @@ export const IdleState: React.FC<IdleStateProps> = ({ commands, onOrbPress }) =>
 
 export default IdleState;
 
-export {};
+export { };

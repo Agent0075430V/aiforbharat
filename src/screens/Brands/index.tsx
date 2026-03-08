@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BrandStackParamList } from '../../types/navigation.types';
 import ActiveDeals from './ActiveDeals';
 import Card from '../../components/ui/Card';
+import MedioraHeader from '../../components/layout/MedioraHeader';
 import useHaptics from '../../hooks/useHaptics';
 import { mockBrandDeals } from '../../constants/mockData.constants';
 import type { BrandDeal } from '../../types/brand.types';
@@ -34,107 +35,109 @@ export const BrandsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background.base }}
-      contentContainerStyle={{
-        padding: spacing.lg,
-        paddingBottom: spacing.xxl,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text
-        style={{
-          fontFamily: fontFamilies.heading.semibold,
-          fontSize: fontSizes.xl,
-          color: colors.text.primary,
-          marginBottom: spacing.lg,
+    <View style={{ flex: 1, backgroundColor: colors.background.base }}>
+      <MedioraHeader showBack={false} />
+      <ScrollView
+        contentContainerStyle={{
+          padding: spacing.lg,
+          paddingBottom: spacing.xxl,
         }}
+        showsVerticalScrollIndicator={false}
       >
-        Brands
-      </Text>
-
-      <ActiveDeals deals={mockBrandDeals} onDealPress={handleDealPress} />
-
-      <View style={{ marginTop: spacing.xl }}>
         <Text
           style={{
             fontFamily: fontFamilies.heading.semibold,
-            fontSize: fontSizes.lg,
+            fontSize: fontSizes.xl,
             color: colors.text.primary,
-            marginBottom: spacing.md,
+            marginBottom: spacing.lg,
           }}
         >
-          Tools
+          Brands
         </Text>
-        <Pressable onPress={handlePricingPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
-          <Card
+
+        <ActiveDeals deals={mockBrandDeals} onDealPress={handleDealPress} />
+
+        <View style={{ marginTop: spacing.xl }}>
+          <Text
             style={{
-              marginBottom: spacing.sm,
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
+              fontFamily: fontFamilies.heading.semibold,
+              fontSize: fontSizes.lg,
+              color: colors.text.primary,
+              marginBottom: spacing.md,
             }}
           >
-            <Text style={{ fontSize: 24, marginRight: spacing.sm }}>🧮</Text>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontFamily: fontFamilies.heading.medium,
-                  fontSize: fontSizes.md,
-                  color: colors.text.primary,
-                }}
-              >
-                Pricing calculator
-              </Text>
-              <Text
-                style={{
-                  fontFamily: fontFamilies.body.regular,
-                  fontSize: fontSizes.sm,
-                  color: colors.text.muted,
-                }}
-              >
-                Estimate deal fees
-              </Text>
-            </View>
-            <Text style={{ color: colors.text.muted }}>→</Text>
-          </Card>
-        </Pressable>
-        <Pressable onPress={handleMediaKitPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
-          <Card
-            style={{
-              borderRadius: radius.lg,
-              padding: spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 24, marginRight: spacing.sm }}>📄</Text>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontFamily: fontFamilies.heading.medium,
-                  fontSize: fontSizes.md,
-                  color: colors.text.primary,
-                }}
-              >
-                Media kit
-              </Text>
-              <Text
-                style={{
-                  fontFamily: fontFamilies.body.regular,
-                  fontSize: fontSizes.sm,
-                  color: colors.text.muted,
-                }}
-              >
-                Share your stats with brands
-              </Text>
-            </View>
-            <Text style={{ color: colors.text.muted }}>→</Text>
-          </Card>
-        </Pressable>
-      </View>
-    </ScrollView>
+            Tools
+          </Text>
+          <Pressable onPress={handlePricingPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
+            <Card
+              style={{
+                marginBottom: spacing.sm,
+                borderRadius: radius.lg,
+                padding: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 24, marginRight: spacing.sm }}>🧮</Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: fontFamilies.heading.medium,
+                    fontSize: fontSizes.md,
+                    color: colors.text.primary,
+                  }}
+                >
+                  Pricing calculator
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: fontFamilies.body.regular,
+                    fontSize: fontSizes.sm,
+                    color: colors.text.muted,
+                  }}
+                >
+                  Estimate deal fees
+                </Text>
+              </View>
+              <Text style={{ color: colors.text.muted }}>→</Text>
+            </Card>
+          </Pressable>
+          <Pressable onPress={handleMediaKitPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
+            <Card
+              style={{
+                borderRadius: radius.lg,
+                padding: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 24, marginRight: spacing.sm }}>📄</Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: fontFamilies.heading.medium,
+                    fontSize: fontSizes.md,
+                    color: colors.text.primary,
+                  }}
+                >
+                  Media kit
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: fontFamilies.body.regular,
+                    fontSize: fontSizes.sm,
+                    color: colors.text.muted,
+                  }}
+                >
+                  Share your stats with brands
+                </Text>
+              </View>
+              <Text style={{ color: colors.text.muted }}>→</Text>
+            </Card>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 

@@ -15,6 +15,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     backgroundColor: '#060608',
   },
   assetBundlePatterns: ['**/*'],
+  // EAS Update configuration (added by `eas update`)
+  updates: {
+    url: 'https://u.expo.dev/af99bc04-aeb7-44c5-955d-9ba117aed57a',
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   ios: {
     supportsTablet: true,
   },
@@ -29,6 +36,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: './assets/images/logo-icon.png',
   },
   extra: {
+    // EAS project ID (set by `eas init`)
+    eas: {
+      projectId: 'af99bc04-aeb7-44c5-955d-9ba117aed57a',
+    },
+
     // Legacy Google OAuth (existing)
     googleWebClientId:
       '554626334629-do7rr0hs2e6mb9lne2i0di9s5992p2rq.apps.googleusercontent.com',

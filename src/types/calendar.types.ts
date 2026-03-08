@@ -10,10 +10,12 @@ export interface CalendarDay {
   captionPreview: string; // First 60 chars of caption
   hashtags: string[];
   bestTimeToPost: string;
+  scheduledTime?: string;   // HH:MM — set when user schedules the post
   engagementScore: number;
   status: DraftStatus;
   draftId?: string;
 }
+
 
 export interface CalendarWeek {
   weekStartDate: string;

@@ -1,3 +1,14 @@
+/**
+ * recorder.service.ts
+ *
+ * Wraps expo-av Audio.Recording with a clean start/stop/cancel API.
+ *
+ * Recording format: AAC in an MPEG-4 container (.m4a)
+ *   - Supported by Groq Whisper (mp4/m4a ✔)
+ *   - Works on both Android and iOS
+ *   - Small file size, good quality for speech
+ */
+
 import { Audio } from 'expo-av';
 
 export type RecordingStatus = 'idle' | 'recording' | 'stopped' | 'error';
@@ -7,6 +18,37 @@ export interface RecordingState {
   uri?: string;
   error?: string;
 }
+
+/**
+ * Custom recording options that guarantee an AAC/M4A file on every platform.
+ * HIGH_QUALITY preset uses LINEAR16 PCM on some Android versions which
+ * Groq Whisper may reject with a 400 error.
+ */
+const SPEECH_RECORDING_OPTIONS: Audio.RecordingOptions = {
+  android: {
+    extension: '.m4a',
+    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+    sampleRate: 16000,  // 16 kHz is optimal for speech recognition
+    numberOfChannels: 1, // mono — half the file size, same accuracy
+    bitRate: 64000,
+  },
+  ios: {
+    extension: '.m4a',
+    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+    audioQuality: Audio.IOSAudioQuality.MEDIUM,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 64000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 64000,
+  },
+};
 
 let currentRecording: Audio.Recording | null = null;
 
@@ -34,16 +76,15 @@ export const startRecording = async (): Promise<RecordingState> => {
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
       shouldDuckAndroid: true,
-      interruptionModeIOS: 1,    // DoNotMix
+      interruptionModeIOS: 1,     // DoNotMix
       interruptionModeAndroid: 1, // DoNotMix
     });
 
-    // 3. Create and start recording using the recommended async factory
-    const { recording } = await Audio.Recording.createAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY
-    );
+    // 3. Create and start recording with explicit AAC/M4A options
+    const { recording } = await Audio.Recording.createAsync(SPEECH_RECORDING_OPTIONS);
     currentRecording = recording;
 
+    console.info('[Recorder] ✅ Recording started (AAC/M4A, 16kHz mono)');
     return { status: 'recording' };
   } catch (error: any) {
     console.warn('[Recorder] startRecording error:', error);
@@ -76,6 +117,7 @@ export const stopRecording = async (): Promise<RecordingState> => {
       return { status: 'error', error: 'Recording produced no audio file' };
     }
 
+    console.info('[Recorder] ✅ Recording stopped, URI:', uri);
     return { status: 'stopped', uri };
   } catch (error: any) {
     console.warn('[Recorder] stopRecording error:', error);

@@ -6,3 +6,5 @@ web-build
 .DS_Store
 *.log
 .env
+mediora-web.zip
+mediora-web/
