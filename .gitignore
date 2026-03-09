@@ -6,5 +6,7 @@ web-build
 .DS_Store
 *.log
 .env
-mediora-web.zip
+
+# Built web output — contains baked-in EXPO_PUBLIC_ secrets, never commit
 mediora-web/
+mediora-web.zip

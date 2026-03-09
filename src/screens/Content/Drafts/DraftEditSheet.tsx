@@ -7,6 +7,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    Platform,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useDrafts } from '../../../store/DraftsContext';
@@ -14,6 +15,24 @@ import type { Draft, DraftStatus } from '../../../types/content.types';
 import colors from '../../../theme/colors';
 import { spacing, radius } from '../../../theme/spacing';
 import { fontFamilies, fontSizes } from '../../../theme/typography';
+
+/** Works on both native (Alert) and web (window.confirm) */
+function crossPlatformConfirm(
+    title: string,
+    message: string,
+    onConfirm: () => void
+) {
+    if (Platform.OS === 'web') {
+        if (window.confirm(`${title}\n\n${message}`)) {
+            onConfirm();
+        }
+    } else {
+        Alert.alert(title, message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: onConfirm },
+        ]);
+    }
+}
 
 interface DraftEditSheetProps {
     draftId: string;
@@ -101,21 +120,14 @@ export const DraftEditSheet: React.FC<DraftEditSheetProps> = ({
     };
 
     const handleDelete = () => {
-        Alert.alert(
+        crossPlatformConfirm(
             'Delete Draft',
             'This action cannot be undone.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await removeDraft(draftId);
-                        Toast.show({ type: 'success', text1: 'Draft deleted' });
-                        onClose();
-                    },
-                },
-            ]
+            async () => {
+                await removeDraft(draftId);
+                Toast.show({ type: 'success', text1: 'Draft deleted' });
+                onClose();
+            }
         );
     };
 
@@ -228,10 +240,18 @@ export const DraftEditSheet: React.FC<DraftEditSheetProps> = ({
             {/* Delete Button */}
             <TouchableOpacity
                 onPress={handleDelete}
-                style={{ marginTop: spacing.md, paddingVertical: spacing.md, alignItems: 'center' }}
+                style={{
+                    marginTop: spacing.sm,
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.lg,
+                    backgroundColor: `${colors.semantic?.error ?? '#FF6B6B'}18`,
+                    borderWidth: 1,
+                    borderColor: colors.semantic?.error ?? '#FF6B6B',
+                    alignItems: 'center',
+                }}
             >
-                <Text style={{ fontFamily: fontFamilies.body.medium, fontSize: fontSizes.sm, color: colors.semantic?.error ?? '#FF6B6B' }}>
-                    Delete Draft
+                <Text style={{ fontFamily: fontFamilies.heading.semibold, fontSize: fontSizes.md, color: colors.semantic?.error ?? '#FF6B6B' }}>
+                    🗑 Delete Draft
                 </Text>
             </TouchableOpacity>
         </ScrollView>

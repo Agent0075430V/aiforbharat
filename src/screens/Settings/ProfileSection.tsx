@@ -6,6 +6,8 @@ import {
     ScrollView,
     ActivityIndicator,
     TextInput,
+    Alert,
+    Platform as RNPlatform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -75,6 +77,27 @@ export const ProfileSection: React.FC = () => {
         setPlatforms((prev) =>
             prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
         );
+    };
+
+    const handleDeleteProfile = () => {
+        const message = 'This will clear your profile settings. You will need to redo the quiz. Continue?';
+        const doDelete = async () => {
+            try {
+                await AsyncStorage.removeItem('mediora_profile');
+                await setProfile(null as any);
+                Toast.show({ type: 'success', text1: 'Profile reset ✓' });
+            } catch {
+                Toast.show({ type: 'error', text1: 'Failed to reset profile' });
+            }
+        };
+        if (RNPlatform.OS === 'web') {
+            if (window.confirm(`Reset Profile\n\n${message}`)) doDelete();
+        } else {
+            Alert.alert('Reset Profile', message, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Reset', style: 'destructive', onPress: doDelete },
+            ]);
+        }
     };
 
     const handleSave = async () => {
@@ -287,6 +310,7 @@ export const ProfileSection: React.FC = () => {
                     borderRadius: radius.lg,
                     backgroundColor: colors.gold?.pure ?? '#D4AF37',
                     alignItems: 'center',
+                    marginBottom: spacing.sm,
                 }}
             >
                 {saving ? (
@@ -296,6 +320,23 @@ export const ProfileSection: React.FC = () => {
                         Save Profile
                     </Text>
                 )}
+            </TouchableOpacity>
+
+            {/* Delete / Reset Profile button */}
+            <TouchableOpacity
+                onPress={handleDeleteProfile}
+                style={{
+                    paddingVertical: spacing.md,
+                    borderRadius: radius.lg,
+                    backgroundColor: '#FF6B6B18',
+                    borderWidth: 1,
+                    borderColor: '#FF6B6B',
+                    alignItems: 'center',
+                }}
+            >
+                <Text style={{ fontFamily: fontFamilies.heading.semibold, fontSize: fontSizes.md, color: '#FF6B6B' }}>
+                    🗑 Reset Profile
+                </Text>
             </TouchableOpacity>
         </ScrollView>
     );

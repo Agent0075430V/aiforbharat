@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
+    Platform as RNPlatform,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useProfile } from '../../store/ProfileContext';
@@ -127,6 +128,32 @@ export const PlatformConnections: React.FC = () => {
             Toast.show({ type: 'error', text1: 'Save failed', text2: 'Please try again.' });
         } finally {
             setSaving(false);
+        }
+    };
+
+    // ─── Clear all linked accounts ────────────────────────────────────────────
+
+    const handleClearAccounts = () => {
+        const message = 'This will remove all your linked social handles and follower counts.';
+        const doDelete = async () => {
+            try {
+                setHandles({});
+                setFollowers({});
+                if (profile) {
+                    await setProfile({ ...profile, socialHandles: {}, followerCounts: {} });
+                }
+                Toast.show({ type: 'success', text1: '🗑 Accounts cleared' });
+            } catch {
+                Toast.show({ type: 'error', text1: 'Failed to clear accounts' });
+            }
+        };
+        if (RNPlatform.OS === 'web') {
+            if (window.confirm(`Clear All Accounts\n\n${message}`)) doDelete();
+        } else {
+            Alert.alert('Clear All Accounts', message, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Clear', style: 'destructive', onPress: doDelete },
+            ]);
         }
     };
 
@@ -370,7 +397,7 @@ Return ONLY valid JSON:
                     borderRadius: radius.lg,
                     backgroundColor: colors.gold.pure,
                     alignItems: 'center',
-                    marginBottom: spacing.md,
+                    marginBottom: spacing.sm,
                     opacity: saving ? 0.7 : 1,
                 }}
             >
@@ -381,6 +408,24 @@ Return ONLY valid JSON:
                         Save Linked Accounts
                     </Text>
                 )}
+            </TouchableOpacity>
+
+            {/* Clear all linked accounts button */}
+            <TouchableOpacity
+                onPress={handleClearAccounts}
+                style={{
+                    padding: spacing.md,
+                    borderRadius: radius.lg,
+                    backgroundColor: '#FF6B6B18',
+                    borderWidth: 1,
+                    borderColor: '#FF6B6B',
+                    alignItems: 'center',
+                    marginBottom: spacing.md,
+                }}
+            >
+                <Text style={{ fontFamily: fontFamilies.heading.semibold, fontSize: fontSizes.md, color: '#FF6B6B' }}>
+                    🗑 Clear All Accounts
+                </Text>
             </TouchableOpacity>
 
             {/* Divider */}
