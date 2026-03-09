@@ -11,7 +11,10 @@ import type { RouteProp } from '@react-navigation/native';
 import type { OnboardingStackParamList } from '../../types/navigation.types';
 import { useQuiz } from '../../store/QuizContext';
 import { useProfile } from '../../store/ProfileContext';
+import { useAuth } from '../../store/AuthContext';
 import { analyzeQuizAnswers } from '../../services/api';
+import { saveUser } from '../../services/aws/mediora.service';
+import { scoreQuizAnswersLocally } from '../../constants/quiz.constants';
 import type { InfluencerProfile, CreatorArchetype, Niche, Tone, Language } from '../../types/profile.types';
 
 type Nav = StackNavigationProp<OnboardingStackParamList, 'QuizAnalyzing'>;
@@ -26,11 +29,17 @@ const messages = [
 
 function buildProfileFromAnalysis(
   raw: unknown,
-  quizAnswers: { creatorType: string; audienceLocation: string; platforms: any[]; postingFrequency: any; biggestChallenge: string; tone: any; contentFormats: any[]; primaryGoal: any }
+  quizAnswers: { creatorType: string; audienceLocation: string; platforms: any[]; postingFrequency: any; biggestChallenge: string; tone: any; contentFormats: any[]; primaryGoal: any },
+  localArchetype: CreatorArchetype,
 ): InfluencerProfile {
   const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const archetype = (typeof o.archetype === 'string' ? o.archetype : 'EDUCATOR') as CreatorArchetype;
-  const niche = (typeof o.niche === 'string' ? o.niche : 'education') as Niche;
+  // Validate the API-returned archetype; if absent/invalid fall back to locally scored one
+  const VALID_ARCHETYPES = ['VISIONARY', 'EDUCATOR', 'ENTERTAINER', 'STORYTELLER', 'STRATEGIST', 'ARTIST', 'ADVOCATE', 'CONNECTOR'];
+  const apiArchetype = typeof o.archetype === 'string' && VALID_ARCHETYPES.includes(o.archetype)
+    ? (o.archetype as CreatorArchetype)
+    : null;
+  const archetype = apiArchetype ?? localArchetype;
+  const niche = (typeof o.niche === 'string' ? o.niche : 'general') as Niche;
   const tone = (typeof o.primaryTone === 'string' ? o.primaryTone : quizAnswers.tone) as Tone;
   const language = (typeof o.suggestedLanguage === 'string' ? o.suggestedLanguage : 'English') as Language;
   const platforms = Array.isArray(quizAnswers.platforms) && quizAnswers.platforms.length
@@ -65,6 +74,7 @@ export const QuizAnalyzing: React.FC = () => {
   const route = useRoute<QuizAnalyzingRoute>();
   const { getQuizAnswers } = useQuiz();
   const { setProfile } = useProfile();
+  const { token: cognitoUserId } = useAuth(); // real Cognito sub stored after login/signup
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -78,13 +88,38 @@ export const QuizAnalyzing: React.FC = () => {
     const run = async () => {
       const answers = route.params?.answers ?? getQuizAnswers();
       if (answers) {
+        // Step 1: Score locally — this always works, no network needed.
+        // This is the guaranteed archetype; the API can only improve upon it.
+        const { primaryArchetype: localArchetype } = scoreQuizAnswersLocally(answers);
+        const resolvedUserId = cognitoUserId ?? `quiz-${Date.now()}`;
+
+        // Step 2: Try to get richer profile data from the AI API.
+        let raw: unknown = null;
         try {
-          const raw = await analyzeQuizAnswers(answers);
-          if (cancelled) return;
-          const profile = buildProfileFromAnalysis(raw, answers);
-          await setProfile(profile);
-        } catch {
-          // keep default / mock profile from next screen or leave unset
+          raw = await analyzeQuizAnswers(answers);
+        } catch (apiErr) {
+          console.warn('[Mediora] Quiz AI analysis failed (using local scoring):', apiErr);
+        }
+
+        if (cancelled) return;
+
+        // Step 3: Build the profile — uses AI archetype if valid, otherwise local score.
+        const profile = buildProfileFromAnalysis(raw, answers, localArchetype);
+        const profileWithId: InfluencerProfile = { ...profile, userId: resolvedUserId };
+
+        // Step 4: Persist locally (always succeeds).
+        await setProfile(profileWithId);
+
+        // Step 5: Sync to DynamoDB (non-fatal if offline).
+        try {
+          await saveUser({
+            userId: resolvedUserId,
+            niche: profileWithId.niche,
+            tone: profileWithId.tone,
+            language: profileWithId.language,
+          });
+        } catch (dbErr) {
+          console.warn('[Mediora] DynamoDB saveUser failed (non-fatal):', dbErr);
         }
       }
       if (!cancelled) {

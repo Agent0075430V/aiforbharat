@@ -120,7 +120,6 @@ export const VoiceOrb: React.FC<VoiceOrbProps> = ({
     <View style={styles.container}>
       <AnimatedPressable
         {...rest}
-        activeOpacity={0.75}
         style={[styles.orbPressable, { transform: [{ scale: combinedScale }] }]}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}

@@ -49,7 +49,6 @@ export const ScoreBreakdown: React.FC<Props> = ({ breakdown }) => {
       <Pressable
         onPress={toggle}
         hitSlop={8}
-        activeOpacity={0.75}
         style={{ flexDirection: 'row', alignItems: 'center' }}
       >
         <Text

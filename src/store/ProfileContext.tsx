@@ -29,16 +29,43 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     let mounted = true;
-    AsyncStorage.getItem(PROFILE_KEY).then((raw) => {
+
+    Promise.all([
+      AsyncStorage.getItem(PROFILE_KEY),
+      AsyncStorage.getItem('last_user_id'),
+    ]).then(async ([raw, loggedInUserId]) => {
       if (!mounted) return;
+
       try {
         const parsed = raw ? (JSON.parse(raw) as InfluencerProfile) : null;
-        setProfileState(parsed);
+
+        if (parsed) {
+          const profileBelongsToCurrentUser =
+            !loggedInUserId ||                          // no user logged in yet — trust it
+            !parsed.userId ||                          // profile has no userId — trust it
+            parsed.userId === loggedInUserId;          // userId matches — trust it
+
+          if (profileBelongsToCurrentUser) {
+            setProfileState(parsed);
+          } else {
+            // Stale profile from a different account (e.g. Manali from testing)
+            // Discard it so the current user starts fresh
+            console.info(
+              `[ProfileContext] Discarding stale profile (userId=${parsed.userId}) — logged-in user is ${loggedInUserId}`
+            );
+            await AsyncStorage.removeItem(PROFILE_KEY);
+            setProfileState(null);
+          }
+        } else {
+          setProfileState(null);
+        }
       } catch {
         setProfileState(null);
       }
+
       setIsLoading(false);
     });
+
     return () => { mounted = false; };
   }, []);
 

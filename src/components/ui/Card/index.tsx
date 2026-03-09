@@ -66,7 +66,6 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, ...rest })
     <AnimatedPressable
       {...rest}
       style={[styles.base, { transform: [{ scale }], opacity }, style]}
-      activeOpacity={0.75}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}

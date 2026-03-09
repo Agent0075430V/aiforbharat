@@ -88,7 +88,6 @@ export const Button: React.FC<ButtonProps> = ({
         { transform: [{ scale }], opacity },
         style,
       ]}
-      activeOpacity={0.75}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
