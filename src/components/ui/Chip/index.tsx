@@ -48,7 +48,6 @@ export const Chip: React.FC<ChipProps> = ({ label, selected, onPress }) => {
 
   return (
     <AnimatedPressable
-      activeOpacity={0.75}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}

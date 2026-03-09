@@ -9,13 +9,29 @@ import colors from '../../theme/colors';
 import { fontFamilies, fontSizes } from '../../theme/typography';
 import { useProfile } from '../../store/ProfileContext';
 import { mockInfluencerProfile } from '../../constants/mockData.constants';
+import { saveUser } from '../../services/aws/mediora.service';
 
 export const ProfileConfirm: React.FC = () => {
   const navigation = useNavigation();
   const { profile, setProfile } = useProfile();
 
   const goToApp = async () => {
-    if (!profile) await setProfile(mockInfluencerProfile);
+    const confirmedProfile = profile ?? mockInfluencerProfile;
+    // 1. Save to AsyncStorage
+    if (!profile) await setProfile(confirmedProfile);
+    // 2. Save to DynamoDB — including full profileJson for restoration after sign-out
+    try {
+      await saveUser({
+        userId: confirmedProfile.userId,
+        name: confirmedProfile.displayName,
+        niche: confirmedProfile.niche,
+        tone: confirmedProfile.tone,
+        language: confirmedProfile.language,
+        profileJson: JSON.stringify(confirmedProfile),
+      });
+    } catch (err) {
+      console.warn('[Mediora] DynamoDB saveUser failed (non-fatal):', err);
+    }
     const root = navigation.getParent() as any;
     root?.replace('App');
   };

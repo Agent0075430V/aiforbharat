@@ -1,0 +1,27 @@
+{
+    "name": "mediora-lambda",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Lambda function handlers for Mediora AWS backend",
+    "scripts": {
+        "bundle:bedrock": "esbuild bedrock/index.js --bundle --platform=node --target=node20 --outfile=dist/bedrock/index.js --format=cjs",
+        "bundle:dynamo": "esbuild dynamo/index.js --bundle --platform=node --target=node20 --outfile=dist/dynamo/index.js --format=cjs",
+        "bundle:s3": "esbuild s3/index.js --bundle --platform=node --target=node20 --outfile=dist/s3/index.js --format=cjs",
+        "bundle:weeklyPlan": "esbuild weeklyPlan/index.js --bundle --platform=node --target=node20 --outfile=dist/weeklyPlan/index.js --format=cjs",
+        "bundle:transcribe": "esbuild transcribe/index.js --bundle --platform=node --target=node20 --outfile=dist/transcribe/index.js --format=cjs",
+        "bundle": "npm run bundle:bedrock && npm run bundle:dynamo && npm run bundle:s3 && npm run bundle:weeklyPlan && npm run bundle:transcribe"
+    },
+    "dependencies": {
+        "@aws-sdk/client-bedrock-runtime": "^3.0.0",
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/client-s3": "^3.0.0",
+        "@aws-sdk/client-transcribe": "^3.0.0",
+        "@aws-sdk/client-translate": "^3.0.0",
+        "@aws-sdk/lib-dynamodb": "^3.0.0",
+        "@aws-sdk/s3-request-presigner": "^3.0.0"
+    },
+    "devDependencies": {
+        "esbuild": "^0.20.0"
+    }
+}

@@ -3,6 +3,10 @@ import { Animated, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import colors from '../../../theme/colors';
 
+// MUST be defined at module scope — NOT inside the component.
+// Defining it inside the component creates a new class each render → infinite re-render → stack overflow.
+const AnimatedCircle = Animated.createAnimatedComponent(Circle as any);
+
 interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
@@ -59,7 +63,4 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   );
 };
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle as any);
-
 export default ProgressRing;
-

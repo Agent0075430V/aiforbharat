@@ -20,11 +20,11 @@ export function buildQuizAnswersFromMap(map: AnswersMap): QuizAnswers | null {
   const a = map;
   const creatorType = (a.q1_creatorType as string) || '';
   const audienceLocation = (a.q2_audienceLocation as string) || '';
-  const platforms = toArray(a.q3_platforms) as Platform[];
+  const platforms = toArray(a.q3_platforms ?? []) as Platform[];
   const postingFrequency = (a.q4_postingFrequency as PostingFrequency) || '1_2_per_week';
   const biggestChallenge = (a.q5_biggestChallenge as string) || '';
   const tone = (a.q6_tone as Tone) || 'informative_clear';
-  const contentFormats = toArray(a.q7_contentFormats) as ContentFormat[];
+  const contentFormats = toArray(a.q7_contentFormats ?? []) as ContentFormat[];
   const primaryGoal = (a.q8_primaryGoal as ContentGoal) || 'community_building';
   if (!creatorType && !platforms.length) return null;
   return {

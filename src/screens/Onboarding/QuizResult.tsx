@@ -21,6 +21,12 @@ export const QuizResult: React.FC = () => {
   const archetypeKey = (profile?.archetype ?? 'EDUCATOR') as CreatorArchetype;
   const archetype = ARCHETYPES[archetypeKey] ?? ARCHETYPES.EDUCATOR;
 
+  // Build display strings from actual profile data
+  const platformDisplay = profile?.platforms?.join(' · ') ?? 'Instagram';
+  const toneDisplay = profile?.tone?.replace(/_/g, ' ') ?? 'Informative & Clear';
+  const formatsDisplay = profile?.contentFormats?.join(' · ') ?? 'Reels';
+  const goalDisplay = profile?.primaryGoal?.replace(/_/g, ' ') ?? 'Community Building';
+
   return (
     <View style={[styles.screen, styles.padded]}>
       <View
@@ -123,7 +129,7 @@ export const QuizResult: React.FC = () => {
             marginBottom: spacing.xs,
           }}
         >
-          Platform focus: Instagram · YouTube
+          Platform focus: {platformDisplay}
         </Text>
         <Text
           // eslint-disable-next-line react-native/no-inline-styles
@@ -134,7 +140,7 @@ export const QuizResult: React.FC = () => {
             marginBottom: spacing.xs,
           }}
         >
-          Primary tone: Informative & Clear
+          Primary tone: {toneDisplay}
         </Text>
         <Text
           // eslint-disable-next-line react-native/no-inline-styles
@@ -145,7 +151,7 @@ export const QuizResult: React.FC = () => {
             marginBottom: spacing.xs,
           }}
         >
-          Content focus: Educational · Carousels · Long Videos
+          Content focus: {formatsDisplay}
         </Text>
         <Text
           // eslint-disable-next-line react-native/no-inline-styles
@@ -155,7 +161,7 @@ export const QuizResult: React.FC = () => {
             color: colors.text.secondary,
           }}
         >
-          Goal: Thought Leadership
+          Goal: {goalDisplay}
         </Text>
       </GoldBorderCard>
 

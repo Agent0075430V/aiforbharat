@@ -5,37 +5,35 @@ import type { AnalyticsData } from '../types/analytics.types';
 import type { BrandDeal, MediaKit } from '../types/brand.types';
 
 export const mockInfluencerProfile: InfluencerProfile = {
-  userId: 'user-1',
-  displayName: 'Manali Landage',
+  userId: 'user-placeholder',
+  displayName: 'Creator',
   archetype: 'EDUCATOR',
   niche: 'education',
   tone: 'informative_clear',
   language: 'English',
-  platforms: ['instagram', 'youtube'],
+  platforms: ['instagram'],
   primaryPlatform: 'instagram',
-  contentFormats: ['reel', 'carousel', 'long_video'],
+  contentFormats: ['reel', 'carousel'],
   postingFrequency: '3_4_per_week',
   primaryGoal: 'thought_leadership',
   audienceLocation: 'india_tier1',
   quizAnswers: {
     creatorType: 'educator',
     audienceLocation: 'india_tier1',
-    platforms: ['instagram', 'youtube'],
+    platforms: ['instagram'],
     postingFrequency: '3_4_per_week',
     biggestChallenge: 'captions',
     tone: 'informative_clear',
-    contentFormats: ['reel', 'carousel', 'long_video'],
+    contentFormats: ['reel', 'carousel'],
     primaryGoal: 'thought_leadership',
   },
   followerCounts: {
-    instagram: 12400,
-    youtube: 3800,
+    instagram: 0,
   },
   socialHandles: {
-    instagram: '@manali.educates',
-    youtube: '@manali.educates',
+    instagram: '@your.handle',
   },
-  bio: 'Helping creators turn ideas into clear, actionable content.',
+  bio: 'Turning ideas into engaging content.',
   completedAt: new Date().toISOString(),
 };
 
@@ -209,7 +207,7 @@ export const mockHashtagGroups: {
     { tag: '#ProductivityHacks', estimatedPosts: '340K', category: 'niche' },
   ],
   branded: [
-    { tag: '#ManaliEducates', estimatedPosts: '—', category: 'branded' },
+    { tag: '#YourBrand', estimatedPosts: '—', category: 'branded' },
     { tag: '#ClearContent', estimatedPosts: '—', category: 'branded' },
     { tag: '#CreatorFirst', estimatedPosts: '—', category: 'branded' },
   ],
@@ -457,16 +455,16 @@ export const mockBrandDeals: BrandDeal[] = [
 ];
 
 export const mockMediaKit: MediaKit = {
-  userId: 'user-1',
+  userId: 'user-placeholder',
   displayName: mockInfluencerProfile.displayName,
   bio: mockInfluencerProfile.bio ?? '',
   niche: mockInfluencerProfile.niche,
   archetype: mockInfluencerProfile.archetype,
   platforms: mockAnalyticsData.platformStats,
-  primaryAudience: 'Creators, students, educators (India tier-1)',
+  primaryAudience: 'Creators, students, educators (India)',
   topContentFormats: mockInfluencerProfile.contentFormats,
   collaborationTypes: ['Sponsored posts', 'Reels', 'Carousels', 'Long-form video', 'Affiliate'],
-  contactEmail: 'hello@manali.educates',
+  contactEmail: 'hello@yourhandle.com',
   generatedAt: new Date().toISOString(),
 };
 

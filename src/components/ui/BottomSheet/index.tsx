@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState, useCallback } from 'react';
 import {
   Modal,
   Pressable,
@@ -45,14 +45,19 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
     const [visible, setVisible] = useState(initialIndex >= 0);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
+    // When true, the next hide was triggered programmatically — skip onClose callback
+    const suppressCallbackRef = useRef(false);
 
     useImperativeHandle(ref, () => ({
       snapToIndex(index: number) {
         if (index >= 0) {
           setVisible(true);
         } else {
+          // Programmatic close: suppress the onClose callback to avoid
+          // re-entrant / infinite-loop scenarios where the caller's onClose
+          // handler itself calls snapToIndex(-1) again.
+          suppressCallbackRef.current = true;
           setVisible(false);
-          onCloseRef.current?.();
         }
       },
     }));
@@ -60,10 +65,22 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
     const heights = snapPoints.map(parseSnapPoint);
     const sheetHeight = heights[0] ?? SCREEN_HEIGHT * 0.4;
 
-    const handleBackdropPress = () => {
+    const handleBackdropPress = useCallback(() => {
+      // User-initiated close: fire the onClose callback normally
+      suppressCallbackRef.current = false;
       setVisible(false);
       onCloseRef.current?.();
-    };
+    }, []);
+
+    // Called when the Modal finishes hiding (visible goes false).
+    // Only fire onClose if it was a user-initiated gesture.
+    const handleDismiss = useCallback(() => {
+      if (suppressCallbackRef.current) {
+        suppressCallbackRef.current = false;
+        return; // skip — programmatic close, caller already handling state
+      }
+      onCloseRef.current?.();
+    }, []);
 
     return (
       <Modal
@@ -71,16 +88,20 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
         transparent
         animationType="slide"
         onRequestClose={handleBackdropPress}
+        onDismiss={handleDismiss}
       >
+        {/* Backdrop — only this area closes the sheet when tapped */}
         <Pressable
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
           onPress={handleBackdropPress}
         >
           <View style={styles.backdrop} />
         </Pressable>
+
+        {/* Sheet panel — sits above backdrop, blocks touch propagation to backdrop */}
         <View
-          style={[styles.sheet, { height: sheetHeight }]}
-          onStartShouldSetResponder={() => true}
+          style={[styles.sheet, { height: sheetHeight, zIndex: 1 }]}
+          pointerEvents="box-none"
         >
           <View style={styles.handle} />
           <View style={[styles.content, style]}>{children}</View>

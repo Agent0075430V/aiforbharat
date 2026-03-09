@@ -1,4 +1,4 @@
-import { Easing } from 'react-native-reanimated';
+import { Easing } from 'react-native';
 
 export const durations = {
   instant: 80,
@@ -8,11 +8,14 @@ export const durations = {
   slower: 450,
 } as const;
 
+// Note: Easing.bezier creates worklet functions in react-native-reanimated;
+// for screen-level animations use Easing directly from react-native-reanimated
+// in the component file. These are kept as lazy getters to avoid module-load-time worklet creation.
 export const easing = {
-  standard: Easing.bezier(0.2, 0.8, 0.2, 1),
-  decel: Easing.bezier(0.05, 0.7, 0.1, 1),
-  accel: Easing.bezier(0.3, 0, 0.8, 0.15),
-} as const;
+  get standard() { return Easing.bezier(0.2, 0.8, 0.2, 1); },
+  get decel() { return Easing.bezier(0.05, 0.7, 0.1, 1); },
+  get accel() { return Easing.bezier(0.3, 0, 0.8, 0.15); },
+};
 
 export const motion = {
   durations,

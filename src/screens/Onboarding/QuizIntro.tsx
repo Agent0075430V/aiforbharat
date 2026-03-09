@@ -50,13 +50,11 @@ export const QuizIntro: React.FC = () => {
       </View>
 
       <Text style={styles.introHeading}>
-        Let&apos;s discover{'\n'}your creator DNA
+        {"Let's discover\nyour creator DNA"}
       </Text>
 
       <Text style={styles.introBody}>
-        We&apos;ll ask you 8 questions that help us understand your unique
-        voice, audience, and content style. The more honest you are, the better
-        Mediora performs for you.
+        {"We'll ask you 8 questions that help us understand your unique voice, audience, and content style. The more honest you are, the better Mediora performs for you."}
       </Text>
 
       <View style={styles.platformsCollage}>

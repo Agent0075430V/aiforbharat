@@ -1,4 +1,10 @@
+import 'react-native-get-random-values'; // aws-amplify polyfill — MUST be first
+import 'react-native-url-polyfill/auto';  // aws-amplify polyfill — MUST be second
 import 'react-native-gesture-handler';
+import { configureAmplify } from './src/services/aws/amplifyConfig';
+
+// Initialize Amplify/Cognito BEFORE any components mount
+configureAmplify();
 import React, { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import { StatusBar } from 'expo-status-bar';

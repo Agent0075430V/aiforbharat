@@ -9,7 +9,7 @@ interface EngagementMeterProps {
 }
 
 export const EngagementMeter: React.FC<EngagementMeterProps> = ({ score }) => {
-  let color = colors.semantic.error;
+  let color: string = colors.semantic.error;
   if (score >= 80) color = colors.semantic.success;
   else if (score >= 60) color = colors.semantic.warning;
 

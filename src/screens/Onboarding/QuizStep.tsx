@@ -164,10 +164,10 @@ export const QuizStep: React.FC = () => {
                 <Pressable
                   key={opt.id}
                   onPress={() => toggle(opt.id)}
-                  activeOpacity={0.75}
-                  style={[
+                  style={({ pressed }) => [
                     styles.optionTile,
                     isSelected && styles.optionTileSelected,
+                    { opacity: pressed ? 0.8 : 1 },
                   ]}
                 >
                   {opt.emoji ? (

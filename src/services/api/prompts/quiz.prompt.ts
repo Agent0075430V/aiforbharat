@@ -18,13 +18,13 @@ ARCHETYPES TO CHOOSE FROM:
 VISIONARY, EDUCATOR, ENTERTAINER, STORYTELLER,
 STRATEGIST, ARTIST, ADVOCATE, CONNECTOR
 
-Return ONLY valid JSON:
+Return ONLY valid JSON. Choose the archetype that best fits the quiz answers above:
 {
-  "archetype": "EDUCATOR",
-  "archetypeDescription": "2-sentence description of this archetype for the user",
-  "niche": "fitness",
-  "primaryTone": "informative_clear",
-  "suggestedLanguage": "English",
+  "archetype": "<ONE OF: VISIONARY | EDUCATOR | ENTERTAINER | STORYTELLER | STRATEGIST | ARTIST | ADVOCATE | CONNECTOR>",
+  "archetypeDescription": "2-sentence description of this archetype tailored to the user",
+  "niche": "<user's content niche, e.g. fitness, tech, lifestyle>",
+  "primaryTone": "<one of: bold_direct | warm_relatable | informative_clear | playful_funny>",
+  "suggestedLanguage": "<e.g. English, Hindi, Hinglish>",
   "contentStrategy": "2-sentence content strategy recommendation",
   "topStrengths": ["strength1", "strength2", "strength3"],
   "focusAreas": ["area1", "area2"],
